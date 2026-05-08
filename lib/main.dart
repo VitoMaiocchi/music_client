@@ -45,6 +45,7 @@ Container getPlayerContent({
   required double factor,
 }) {
   return Container(
+    height: minSize + (maxSize - minSize) * factor,
     color: Colors.red,
     child: const Center(child: Text("Player UI")),
   );
@@ -52,6 +53,7 @@ Container getPlayerContent({
 
 Container getQueueContent({required double maxSize, required double factor}) {
   return Container(
+    height: maxSize * factor,
     color: Colors.blue,
     child: const Center(child: Text("Queue UI")),
   );
@@ -62,6 +64,7 @@ Container getNavigationContent({
   required double factor,
 }) {
   return Container(
+    height: maxSize * factor,
     color: Colors.green,
     child: const Center(child: Text("Navigation UI")),
   );
@@ -83,71 +86,81 @@ class PlayerSheet extends StatefulWidget {
   State<PlayerSheet> createState() => _PlayerSheetState();
 }
 
-class _PlayerSheetState extends State<PlayerSheet> {
-  double _dragOffset = 0.0;
-  late double _screenHeight;
+class _PlayerSheetState extends State<PlayerSheet>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
 
-  bool _isDragging = false;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.snapDuration,
+      value: 0,
+      lowerBound: 0,
+      upperBound: 1,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    _screenHeight = MediaQuery.of(context).size.height;
+    double screenHeight = MediaQuery.of(context).size.height;
 
-    final minH = widget.miniPlayerHeight;
-    final maxH = _screenHeight;
+    double miniPlayerGrowth =
+        screenHeight - widget.miniPlayerHeight - widget.navigationHeight;
+    double currentNavigationHeight =
+        widget.navigationHeight * (1 - _controller.value);
+    double currentMiniPlayerHeight =
+        widget.miniPlayerHeight +
+        miniPlayerGrowth * _controller.value +
+        widget.navigationHeight -
+        currentNavigationHeight;
 
-    double currentHeight = (_screenHeight - _dragOffset).clamp(minH, maxH);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
 
-    return AnimatedPositioned(
-      duration: _isDragging ? Duration.zero : widget.snapDuration,
-      curve: Curves.easeOut,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: currentHeight,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (d) {
+                _controller.value -= d.delta.dy / miniPlayerGrowth;
+              },
 
-        onVerticalDragStart: (_) {
-          setState(() => _isDragging = true);
-        },
+              onVerticalDragEnd: (d) {
+                // velocity-based snap
+                if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
+                  // fast swipe up → fullscreen
+                  _controller.animateTo(1);
+                } else if (d.primaryVelocity != null &&
+                    d.primaryVelocity! > 500) {
+                  // fast swipe down → collapsed
+                  _controller.animateTo(0);
+                } else {
+                  // position-based snap
+                  if (_controller.value < 0.5) {
+                    _controller.animateTo(0);
+                  } else {
+                    _controller.animateTo(1);
+                  }
+                }
+              },
 
-        onVerticalDragUpdate: (d) {
-          setState(() {
-            _dragOffset += d.delta.dy;
-            _dragOffset = _dragOffset.clamp(0.0, _screenHeight - minH);
-          });
-        },
-
-        onVerticalDragEnd: (d) {
-          setState(() {
-            _isDragging = false;
-
-            // velocity-based snap
-            if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
-              // fast swipe up → fullscreen
-              _dragOffset = 0;
-            } else if (d.primaryVelocity != null && d.primaryVelocity! > 500) {
-              // fast swipe down → collapsed
-              _dragOffset = _screenHeight - minH;
-            } else {
-              // position-based snap
-              final mid = (_screenHeight - minH) / 2;
-              if (_dragOffset < mid) {
-                _dragOffset = 0;
-              } else {
-                _dragOffset = _screenHeight - minH;
-              }
-            }
-          });
-        },
-
-        child: getPlayerContent(
-          minSize: minH,
-          maxSize: maxH,
-          factor: 1 - (_dragOffset / (maxH - minH)),
-        ),
-      ),
+              child: getPlayerContent(
+                minSize: widget.miniPlayerHeight,
+                maxSize: screenHeight,
+                factor: _controller.value,
+              ),
+            ),
+            getNavigationContent(
+              maxSize: widget.navigationHeight,
+              factor: 1 - _controller.value,
+            ),
+          ],
+        );
+      },
     );
   }
 }
