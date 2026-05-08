@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+void main() async {
+  await dotenv.load(fileName: "credentials.env");
   runApp(const MyApp());
 }
 
@@ -104,6 +106,9 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: .center,
           children: [
+            Text(dotenv.env['SUBSONIC_URL'] ?? 'No URL found'),
+            Text(dotenv.env['SUBSONIC_USER'] ?? 'No username found'),
+            Text(dotenv.env['SUBSONIC_PASSWORD'] ?? 'No password found'),
             const Text('You have pushed the button this many times:'),
             Text(
               '$_counter',
