@@ -25,7 +25,107 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         textTheme: GoogleFonts.notoSansTextTheme(),
       ),
-      home: const StarredScreen(),
+      home: Scaffold(
+        body: Stack(
+          children: [
+            // Main content
+            const StarredScreen(),
+
+            SnapDragSheet(
+              child: Container(
+                color: Colors.red,
+                child: const Center(child: Text("Player UI")),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SnapDragSheet extends StatefulWidget {
+  final Widget child;
+  final double collapsedFactor;
+  final Duration snapDuration;
+
+  const SnapDragSheet({
+    super.key,
+    required this.child,
+    this.collapsedFactor = 0.12,
+    this.snapDuration = const Duration(milliseconds: 160),
+  });
+
+  @override
+  State<SnapDragSheet> createState() => _SnapDragSheetState();
+}
+
+class _SnapDragSheetState extends State<SnapDragSheet> {
+  double _dragOffset = 0.0;
+  late double _screenHeight;
+
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    _screenHeight = MediaQuery.of(context).size.height;
+
+    final minH = _screenHeight * widget.collapsedFactor;
+    final maxH = _screenHeight;
+
+    double currentHeight = (_screenHeight - _dragOffset).clamp(minH, maxH);
+
+    return Stack(
+      children: [
+        AnimatedPositioned(
+          duration: _isDragging ? Duration.zero : widget.snapDuration,
+          curve: Curves.easeOut,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: currentHeight,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+
+            onVerticalDragStart: (_) {
+              setState(() => _isDragging = true);
+            },
+
+            onVerticalDragUpdate: (d) {
+              setState(() {
+                _dragOffset += d.delta.dy;
+                _dragOffset = _dragOffset.clamp(0.0, _screenHeight - minH);
+              });
+            },
+
+            onVerticalDragEnd: (d) {
+              setState(() {
+                _isDragging = false;
+
+                // velocity-based snap
+                if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
+                  // fast swipe up → fullscreen
+                  _dragOffset = 0;
+                } else if (d.primaryVelocity != null &&
+                    d.primaryVelocity! > 500) {
+                  // fast swipe down → collapsed
+                  _dragOffset = _screenHeight - minH;
+                } else {
+                  // position-based snap
+                  final mid = (_screenHeight - minH) / 2;
+                  if (_dragOffset < mid) {
+                    _dragOffset = 0;
+                  } else {
+                    _dragOffset = _screenHeight - minH;
+                  }
+                }
+              });
+            },
+
+            child: widget.child,
+          ),
+        ),
+      ],
     );
   }
 }
