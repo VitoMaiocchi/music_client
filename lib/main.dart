@@ -31,12 +31,7 @@ class MyApp extends StatelessWidget {
             // Main content
             const StarredScreen(),
 
-            SnapDragSheet(
-              child: Container(
-                color: Colors.red,
-                child: const Center(child: Text("Player UI")),
-              ),
-            ),
+            PlayerSheet(),
           ],
         ),
       ),
@@ -44,23 +39,51 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class SnapDragSheet extends StatefulWidget {
-  final Widget child;
-  final double collapsedFactor;
-  final Duration snapDuration;
+Container getPlayerContent({
+  required double minSize,
+  required double maxSize,
+  required double factor,
+}) {
+  return Container(
+    color: Colors.red,
+    child: const Center(child: Text("Player UI")),
+  );
+}
 
-  const SnapDragSheet({
+Container getQueueContent({required double maxSize, required double factor}) {
+  return Container(
+    color: Colors.blue,
+    child: const Center(child: Text("Queue UI")),
+  );
+}
+
+Container getNavigationContent({
+  required double maxSize,
+  required double factor,
+}) {
+  return Container(
+    color: Colors.green,
+    child: const Center(child: Text("Navigation UI")),
+  );
+}
+
+class PlayerSheet extends StatefulWidget {
+  final Duration snapDuration;
+  final double miniPlayerHeight;
+  final double navigationHeight;
+
+  const PlayerSheet({
     super.key,
-    required this.child,
-    this.collapsedFactor = 0.12,
     this.snapDuration = const Duration(milliseconds: 160),
+    this.miniPlayerHeight = 60,
+    this.navigationHeight = 80,
   });
 
   @override
-  State<SnapDragSheet> createState() => _SnapDragSheetState();
+  State<PlayerSheet> createState() => _PlayerSheetState();
 }
 
-class _SnapDragSheetState extends State<SnapDragSheet> {
+class _PlayerSheetState extends State<PlayerSheet> {
   double _dragOffset = 0.0;
   late double _screenHeight;
 
@@ -70,62 +93,61 @@ class _SnapDragSheetState extends State<SnapDragSheet> {
   Widget build(BuildContext context) {
     _screenHeight = MediaQuery.of(context).size.height;
 
-    final minH = _screenHeight * widget.collapsedFactor;
+    final minH = widget.miniPlayerHeight;
     final maxH = _screenHeight;
 
     double currentHeight = (_screenHeight - _dragOffset).clamp(minH, maxH);
 
-    return Stack(
-      children: [
-        AnimatedPositioned(
-          duration: _isDragging ? Duration.zero : widget.snapDuration,
-          curve: Curves.easeOut,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: currentHeight,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
+    return AnimatedPositioned(
+      duration: _isDragging ? Duration.zero : widget.snapDuration,
+      curve: Curves.easeOut,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: currentHeight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
 
-            onVerticalDragStart: (_) {
-              setState(() => _isDragging = true);
-            },
+        onVerticalDragStart: (_) {
+          setState(() => _isDragging = true);
+        },
 
-            onVerticalDragUpdate: (d) {
-              setState(() {
-                _dragOffset += d.delta.dy;
-                _dragOffset = _dragOffset.clamp(0.0, _screenHeight - minH);
-              });
-            },
+        onVerticalDragUpdate: (d) {
+          setState(() {
+            _dragOffset += d.delta.dy;
+            _dragOffset = _dragOffset.clamp(0.0, _screenHeight - minH);
+          });
+        },
 
-            onVerticalDragEnd: (d) {
-              setState(() {
-                _isDragging = false;
+        onVerticalDragEnd: (d) {
+          setState(() {
+            _isDragging = false;
 
-                // velocity-based snap
-                if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
-                  // fast swipe up → fullscreen
-                  _dragOffset = 0;
-                } else if (d.primaryVelocity != null &&
-                    d.primaryVelocity! > 500) {
-                  // fast swipe down → collapsed
-                  _dragOffset = _screenHeight - minH;
-                } else {
-                  // position-based snap
-                  final mid = (_screenHeight - minH) / 2;
-                  if (_dragOffset < mid) {
-                    _dragOffset = 0;
-                  } else {
-                    _dragOffset = _screenHeight - minH;
-                  }
-                }
-              });
-            },
+            // velocity-based snap
+            if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
+              // fast swipe up → fullscreen
+              _dragOffset = 0;
+            } else if (d.primaryVelocity != null && d.primaryVelocity! > 500) {
+              // fast swipe down → collapsed
+              _dragOffset = _screenHeight - minH;
+            } else {
+              // position-based snap
+              final mid = (_screenHeight - minH) / 2;
+              if (_dragOffset < mid) {
+                _dragOffset = 0;
+              } else {
+                _dragOffset = _screenHeight - minH;
+              }
+            }
+          });
+        },
 
-            child: widget.child,
-          ),
+        child: getPlayerContent(
+          minSize: minH,
+          maxSize: maxH,
+          factor: 1 - (_dragOffset / (maxH - minH)),
         ),
-      ],
+      ),
     );
   }
 }
@@ -153,12 +175,8 @@ class SwipeableTile extends StatefulWidget {
 class _SwipeableTileState extends State<SwipeableTile>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late AudioPlayer _audioPlayer;
   double _dragOffset = 0;
   bool _overThreshold = false;
-
-  static bool get _isDesktop =>
-      Platform.isLinux || Platform.isWindows || Platform.isMacOS;
 
   @override
   void initState() {
@@ -167,27 +185,16 @@ class _SwipeableTileState extends State<SwipeableTile>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    if (_isDesktop) {
-      _audioPlayer = AudioPlayer();
-      // drop a short click wav in assets/sounds/click.wav
-      _audioPlayer.setAsset('assets/sounds/click.wav');
-    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    if (_isDesktop) _audioPlayer.dispose();
     super.dispose();
   }
 
   Future<void> _triggerFeedback() async {
-    if (_isDesktop) {
-      await _audioPlayer.seek(Duration.zero);
-      await _audioPlayer.play();
-    } else {
-      await HapticFeedback.lightImpact();
-    }
+    await HapticFeedback.lightImpact();
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
