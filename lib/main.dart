@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,11 +40,51 @@ Container getPlayerContent({
   );
 }
 
-Container getQueueContent({required double maxSize, required double factor}) {
+Container getQueueContent({
+  required ScrollController scrollController,
+  required double maxSize,
+  required double factor,
+  required bool scrollable,
+}) {
   return Container(
     height: maxSize * factor,
     color: Colors.blue,
-    child: const Center(child: Text("Queue UI")),
+    child: ListView.builder(
+      controller: scrollController,
+      physics: scrollable
+          ? const ClampingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
+      itemCount: 20,
+      itemBuilder: (context, index) {
+        return ListTile(
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          title: Container(
+            height: 14,
+            width: 120,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          subtitle: Container(
+            height: 11,
+            width: 80,
+            decoration: BoxDecoration(
+              color: Colors.white12,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          trailing: const Icon(Icons.drag_handle, color: Colors.white38),
+        );
+      },
+    ),
   );
 }
 
@@ -79,6 +120,13 @@ class PlayerSheet extends StatefulWidget {
 class _PlayerSheetState extends State<PlayerSheet>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  final _queueScrollController = ScrollController();
+  late VelocityTracker _queueVelocityTracker;
+
+  bool get _queueAtTop =>
+      !_queueScrollController.hasClients ||
+      _queueScrollController.position.pixels <= 0;
+  bool _draggingQueue = false;
 
   @override
   void initState() {
@@ -94,9 +142,8 @@ class _PlayerSheetState extends State<PlayerSheet>
 
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-
-    double miniPlayerGrowth =
+    final screenHeight = MediaQuery.of(context).size.height;
+    final miniPlayerGrowth =
         screenHeight - widget.miniPlayerHeight - widget.navigationHeight;
 
     return AnimatedBuilder(
@@ -125,6 +172,45 @@ class _PlayerSheetState extends State<PlayerSheet>
           ),
         );
 
+        final queue = Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (e) {
+            _queueVelocityTracker = VelocityTracker.withKind(e.kind);
+            _draggingQueue = false;
+          },
+          onPointerMove: (e) {
+            _queueVelocityTracker.addPosition(e.timeStamp, e.position);
+            // latch on first qualifying move
+            if (!_draggingQueue && _queueAtTop && e.delta.dy > 0) {
+              _draggingQueue = true;
+            }
+            // once latched, own the entire gesture (both directions)
+            if (_draggingQueue) {
+              _controller.value -= e.delta.dy / miniPlayerGrowth;
+            }
+          },
+          onPointerUp: (_) {
+            if (_draggingQueue) {
+              final v = _queueVelocityTracker.getVelocity().pixelsPerSecond.dy;
+              if (v > 500) {
+                _controller.animateTo(factor.floor().toDouble());
+              } else if (v < -500) {
+                _controller.animateTo(factor.ceil().toDouble());
+              } else {
+                _controller.animateTo(factor.round().toDouble());
+              }
+            }
+            _draggingQueue = false;
+          },
+          child: getQueueContent(
+            scrollController: _queueScrollController,
+            scrollable:
+                factor >= 2, // ← disable scroll while dragging into position
+            maxSize: screenHeight,
+            factor: (factor - 1).clamp(0.0, 1.0),
+          ),
+        );
+
         return Stack(
           children: [
             Offstage(
@@ -149,13 +235,7 @@ class _PlayerSheetState extends State<PlayerSheet>
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: Offstage(
-                offstage: factor <= 1,
-                child: getQueueContent(
-                  maxSize: screenHeight,
-                  factor: (factor - 1).clamp(0.0, 1.0),
-                ),
-              ),
+              child: Offstage(offstage: factor <= 1, child: queue),
             ),
           ],
         );
