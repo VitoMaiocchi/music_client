@@ -22,16 +22,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         textTheme: GoogleFonts.notoSansTextTheme(),
       ),
-      home: Scaffold(
-        body: Stack(
-          children: [
-            // Main content
-            const StarredScreen(),
-
-            PlayerSheet(),
-          ],
-        ),
-      ),
+      home: Scaffold(body: PlayerSheet()),
     );
   }
 }
@@ -111,62 +102,63 @@ class _PlayerSheetState extends State<PlayerSheet>
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, _) {
-        double factor = _controller.value;
+        final factor = _controller.value;
 
-        Widget player = GestureDetector(
+        final player = GestureDetector(
           behavior: HitTestBehavior.opaque,
-
           onVerticalDragUpdate: (d) {
             _controller.value -= d.delta.dy / miniPlayerGrowth;
           },
-
           onVerticalDragEnd: (d) {
-            // velocity-based snap
             if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
-              // fast swipe up → fullscreen
               _controller.animateTo(factor.ceil().toDouble());
             } else if (d.primaryVelocity != null && d.primaryVelocity! > 500) {
-              // fast swipe down → collapsed
               _controller.animateTo(factor.floor().toDouble());
             } else {
               _controller.animateTo(factor.round().toDouble());
             }
           },
-
           child: getPlayerContent(
             minSize: widget.miniPlayerHeight,
             maxSize: screenHeight,
-            factor: factor.clamp(0, 1),
+            factor: factor.clamp(0.0, 1.0),
           ),
         );
 
-        if (factor < 1) {
-          return Stack(
-            children: [
-              widget.background,
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  player,
-                  getNavigationContent(
-                    maxSize: widget.navigationHeight,
-                    factor: 1 - _controller.value,
-                  ),
-                ],
+        return Stack(
+          children: [
+            Offstage(
+              offstage: factor >= 1,
+              child: SizedBox(
+                height:
+                    screenHeight -
+                    widget.navigationHeight -
+                    widget.miniPlayerHeight,
+                child: widget.background,
               ),
-            ],
-          );
-        } else if (factor < 2) {
-          return Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              player,
-              getQueueContent(maxSize: screenHeight, factor: factor - 1),
-            ],
-          );
-        } else {
-          return getQueueContent(maxSize: screenHeight, factor: factor - 1);
-        }
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                player,
+                getNavigationContent(
+                  maxSize: widget.navigationHeight,
+                  factor: (1 - factor).clamp(0.0, 1.0),
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Offstage(
+                offstage: factor <= 1,
+                child: getQueueContent(
+                  maxSize: screenHeight,
+                  factor: (factor - 1).clamp(0.0, 1.0),
+                ),
+              ),
+            ),
+          ],
+        );
       },
     );
   }
