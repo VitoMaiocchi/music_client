@@ -28,75 +28,101 @@ class MyApp extends StatelessWidget {
   }
 }
 
-Container getPlayerContent({
-  required double minSize,
-  required double maxSize,
-  required double factor,
-}) {
-  return Container(
-    height: minSize + (maxSize - minSize) * factor,
-    color: Colors.red,
-    child: const Center(child: Text("Player UI")),
-  );
+class Player extends StatelessWidget {
+  final double minSize;
+  final double maxSize;
+  final double factor;
+
+  const Player({
+    super.key,
+    required this.minSize,
+    required this.maxSize,
+    required this.factor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: minSize + (maxSize - minSize) * factor,
+      color: Colors.red,
+      child: const Center(child: Text("Player UI")),
+    );
+  }
 }
 
-Container getQueueContent({
-  required ScrollController scrollController,
-  required double maxSize,
-  required double factor,
-  required bool scrollable,
-}) {
-  return Container(
-    height: maxSize * factor,
-    color: Colors.blue,
-    child: ListView.builder(
-      controller: scrollController,
-      physics: scrollable
-          ? const ClampingScrollPhysics()
-          : const NeverScrollableScrollPhysics(),
-      itemCount: 20,
-      itemBuilder: (context, index) {
-        return ListTile(
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(4),
+class Queue extends StatelessWidget {
+  final double maxSize;
+  final double factor;
+  final ScrollController scrollController;
+  final bool scrollable;
+
+  const Queue({
+    super.key,
+    required this.maxSize,
+    required this.factor,
+    required this.scrollController,
+    required this.scrollable,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: maxSize * factor,
+      color: Colors.blue,
+      child: ListView.builder(
+        controller: scrollController,
+        physics: scrollable
+            ? const ClampingScrollPhysics()
+            : const NeverScrollableScrollPhysics(),
+        itemCount: 20,
+        itemBuilder: (context, index) {
+          return ListTile(
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          title: Container(
-            height: 14,
-            width: 120,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(4),
+            title: Container(
+              height: 14,
+              width: 120,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          subtitle: Container(
-            height: 11,
-            width: 80,
-            decoration: BoxDecoration(
-              color: Colors.white12,
-              borderRadius: BorderRadius.circular(4),
+            subtitle: Container(
+              height: 11,
+              width: 80,
+              decoration: BoxDecoration(
+                color: Colors.white12,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          trailing: const Icon(Icons.drag_handle, color: Colors.white38),
-        );
-      },
-    ),
-  );
+            trailing: const Icon(Icons.drag_handle, color: Colors.white38),
+          );
+        },
+      ),
+    );
+  }
 }
 
-Container getNavigationContent({
-  required double maxSize,
-  required double factor,
-}) {
-  return Container(
-    height: maxSize * factor,
-    color: Colors.green,
-    child: const Center(child: Text("Navigation UI")),
-  );
+class NavigationBar extends StatelessWidget {
+  final double maxSize;
+  final double factor;
+
+  const NavigationBar({super.key, required this.maxSize, required this.factor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: maxSize * factor,
+      color: Colors.green,
+      child: const Center(child: Text("Navigation UI")),
+    );
+  }
 }
 
 class PlayerSheet extends StatefulWidget {
@@ -165,7 +191,7 @@ class _PlayerSheetState extends State<PlayerSheet>
               _controller.animateTo(factor.round().toDouble());
             }
           },
-          child: getPlayerContent(
+          child: Player(
             minSize: widget.miniPlayerHeight,
             maxSize: screenHeight,
             factor: factor.clamp(0.0, 1.0),
@@ -202,7 +228,7 @@ class _PlayerSheetState extends State<PlayerSheet>
             }
             _draggingQueue = false;
           },
-          child: getQueueContent(
+          child: Queue(
             scrollController: _queueScrollController,
             scrollable:
                 factor >= 2, // ← disable scroll while dragging into position
@@ -227,7 +253,7 @@ class _PlayerSheetState extends State<PlayerSheet>
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 player,
-                getNavigationContent(
+                NavigationBar(
                   maxSize: widget.navigationHeight,
                   factor: (1 - factor).clamp(0.0, 1.0),
                 ),
