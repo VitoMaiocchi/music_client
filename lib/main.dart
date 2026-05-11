@@ -1,12 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:music_client/music_providers.dart';
 import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,12 +71,14 @@ class PlayerSheet extends StatefulWidget {
   final Duration snapDuration;
   final double miniPlayerHeight;
   final double navigationHeight;
+  final Widget background;
 
   const PlayerSheet({
     super.key,
     this.snapDuration = const Duration(milliseconds: 160),
     this.miniPlayerHeight = 60,
     this.navigationHeight = 80,
+    this.background = const StarredScreen(),
   });
 
   @override
@@ -98,7 +97,7 @@ class _PlayerSheetState extends State<PlayerSheet>
       duration: widget.snapDuration,
       value: 0,
       lowerBound: 0,
-      upperBound: 1,
+      upperBound: 2,
     );
   }
 
@@ -108,58 +107,66 @@ class _PlayerSheetState extends State<PlayerSheet>
 
     double miniPlayerGrowth =
         screenHeight - widget.miniPlayerHeight - widget.navigationHeight;
-    double currentNavigationHeight =
-        widget.navigationHeight * (1 - _controller.value);
-    double currentMiniPlayerHeight =
-        widget.miniPlayerHeight +
-        miniPlayerGrowth * _controller.value +
-        widget.navigationHeight -
-        currentNavigationHeight;
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, _) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
+        double factor = _controller.value;
 
-              onVerticalDragUpdate: (d) {
-                _controller.value -= d.delta.dy / miniPlayerGrowth;
-              },
+        Widget player = GestureDetector(
+          behavior: HitTestBehavior.opaque,
 
-              onVerticalDragEnd: (d) {
-                // velocity-based snap
-                if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
-                  // fast swipe up → fullscreen
-                  _controller.animateTo(1);
-                } else if (d.primaryVelocity != null &&
-                    d.primaryVelocity! > 500) {
-                  // fast swipe down → collapsed
-                  _controller.animateTo(0);
-                } else {
-                  // position-based snap
-                  if (_controller.value < 0.5) {
-                    _controller.animateTo(0);
-                  } else {
-                    _controller.animateTo(1);
-                  }
-                }
-              },
+          onVerticalDragUpdate: (d) {
+            _controller.value -= d.delta.dy / miniPlayerGrowth;
+          },
 
-              child: getPlayerContent(
-                minSize: widget.miniPlayerHeight,
-                maxSize: screenHeight,
-                factor: _controller.value,
-              ),
-            ),
-            getNavigationContent(
-              maxSize: widget.navigationHeight,
-              factor: 1 - _controller.value,
-            ),
-          ],
+          onVerticalDragEnd: (d) {
+            // velocity-based snap
+            if (d.primaryVelocity != null && d.primaryVelocity! < -500) {
+              // fast swipe up → fullscreen
+              _controller.animateTo(factor.ceil().toDouble());
+            } else if (d.primaryVelocity != null && d.primaryVelocity! > 500) {
+              // fast swipe down → collapsed
+              _controller.animateTo(factor.floor().toDouble());
+            } else {
+              _controller.animateTo(factor.round().toDouble());
+            }
+          },
+
+          child: getPlayerContent(
+            minSize: widget.miniPlayerHeight,
+            maxSize: screenHeight,
+            factor: factor.clamp(0, 1),
+          ),
         );
+
+        if (factor < 1) {
+          return Stack(
+            children: [
+              widget.background,
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  player,
+                  getNavigationContent(
+                    maxSize: widget.navigationHeight,
+                    factor: 1 - _controller.value,
+                  ),
+                ],
+              ),
+            ],
+          );
+        } else if (factor < 2) {
+          return Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              player,
+              getQueueContent(maxSize: screenHeight, factor: factor - 1),
+            ],
+          );
+        } else {
+          return getQueueContent(maxSize: screenHeight, factor: factor - 1);
+        }
       },
     );
   }
