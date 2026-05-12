@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
@@ -10,6 +11,28 @@ final subsonicServiceProvider = Provider((ref) => SubsonicService());
 
 final starredTracksProvider = FutureProvider<List<Track>>((ref) async {
   return ref.read(subsonicServiceProvider).getStarred();
+});
+
+class CoverRequest {
+  final Track track;
+  final int? size;
+
+  const CoverRequest(this.track, this.size);
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoverRequest && other.track == track && other.size == size;
+
+  @override
+  int get hashCode => Object.hash(track, size);
+}
+
+final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
+  ref,
+  req,
+) async {
+  final service = ref.read(subsonicServiceProvider);
+  return service.getCoverArt(req.track.coverArt, size: req.size);
 });
 
 class SubsonicService {
@@ -62,5 +85,15 @@ class SubsonicService {
         .findAllElements('song')
         .map((element) => Track.fromXml(element))
         .toList();
+  }
+
+  Future<ImageProvider> getCoverArt(String coverArtId, {int? size}) async {
+    final params = <String, String>{
+      'id': coverArtId,
+      if (size != null) 'size': size.toString(),
+    };
+
+    final uri = _buildUri('getCoverArt', params);
+    return NetworkImage(uri.toString());
   }
 }

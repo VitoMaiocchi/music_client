@@ -296,6 +296,7 @@ class CurrentPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracks = ref.watch(starredTracksProvider);
+    final dpr = MediaQuery.of(context).devicePixelRatio;
 
     return Scaffold(
       // <-- needed, otherwise no background/structure
@@ -305,16 +306,41 @@ class CurrentPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (tracks) => ListView.builder(
           itemCount: tracks.length,
-          itemBuilder: (context, i) => SwipeableTile(
-            onSwipeLeft: () =>
-                debugPrint('left triggered on ${tracks[i].title}'),
-            onSwipeRight: () =>
-                debugPrint('right triggered on ${tracks[i].title}'),
-            child: ListTile(
-              title: Text(tracks[i].title),
-              subtitle: Text(tracks[i].artist),
-            ),
-          ),
+          itemBuilder: (context, i) {
+            final track = tracks[i];
+
+            return SwipeableTile(
+              onSwipeLeft: () => debugPrint('left triggered on ${track.title}'),
+              onSwipeRight: () =>
+                  debugPrint('right triggered on ${track.title}'),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final cover = ref.watch(
+                    coverProvider(CoverRequest(track, (40 * dpr).ceil())),
+                  );
+
+                  return ListTile(
+                    leading: cover.when(
+                      loading: () => const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      error: (_, _) => const Icon(Icons.music_note),
+                      data: (img) => Image(
+                        image: img,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    title: Text(track.title),
+                    subtitle: Text(track.artist),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
     );
