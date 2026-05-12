@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:music_client/music_providers.dart';
+import 'package:music_client/backend.dart';
 import 'package:music_client/util.dart';
 
 class Player extends StatelessWidget {

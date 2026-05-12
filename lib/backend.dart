@@ -1,9 +1,16 @@
 import 'dart:convert';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'track.dart';
+import 'playback.dart';
+
+final subsonicServiceProvider = Provider((ref) => SubsonicService());
+
+final starredTracksProvider = FutureProvider<List<Track>>((ref) async {
+  return ref.read(subsonicServiceProvider).getStarred();
+});
 
 class SubsonicService {
   String get _baseUrl => dotenv.env['SUBSONIC_URL']!;
