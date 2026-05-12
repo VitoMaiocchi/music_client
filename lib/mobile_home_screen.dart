@@ -26,11 +26,12 @@ class Player extends StatelessWidget {
   }
 }
 
-class Queue extends StatelessWidget {
+class Queue extends StatefulWidget {
   final double maxSize;
   final double factor;
   final ScrollController scrollController;
   final bool scrollable;
+  final ValueNotifier<bool> isReordering;
 
   const Queue({
     super.key,
@@ -38,21 +39,48 @@ class Queue extends StatelessWidget {
     required this.factor,
     required this.scrollController,
     required this.scrollable,
+    required this.isReordering,
   });
+
+  @override
+  State<Queue> createState() => _QueueState();
+}
+
+class _QueueState extends State<Queue> {
+  late List<int> items;
+
+  @override
+  void initState() {
+    super.initState();
+    items = List.generate(30, (i) => i + 1);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: maxSize * factor,
+      height: widget.maxSize * widget.factor,
       color: Colors.blue,
-      child: ListView.builder(
-        controller: scrollController,
-        physics: scrollable
+      child: ReorderableListView.builder(
+        scrollController: widget.scrollController,
+        physics: widget.scrollable
             ? const ClampingScrollPhysics()
             : const NeverScrollableScrollPhysics(),
-        itemCount: 20,
+        itemCount: items.length,
+        onReorderStart: (_) => widget.isReordering.value = true,
+        onReorderEnd: (_) => widget.isReordering.value = false,
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            widget.isReordering.value = false;
+            if (newIndex > oldIndex) newIndex--;
+            final item = items.removeAt(oldIndex);
+            items.insert(newIndex, item);
+          });
+        },
         itemBuilder: (context, index) {
+          final value = items[index];
+
           return ListTile(
+            key: ValueKey(value),
             leading: Container(
               width: 48,
               height: 48,
@@ -60,24 +88,18 @@ class Queue extends StatelessWidget {
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(4),
               ),
-            ),
-            title: Container(
-              height: 14,
-              width: 120,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(4),
+              alignment: Alignment.center,
+              child: Text(
+                '$value',
+                style: const TextStyle(color: Colors.white),
               ),
             ),
-            subtitle: Container(
-              height: 11,
-              width: 80,
-              decoration: BoxDecoration(
-                color: Colors.white12,
-                borderRadius: BorderRadius.circular(4),
-              ),
+            title: Container(height: 14, width: 120, color: Colors.white24),
+            subtitle: Container(height: 11, width: 80, color: Colors.white12),
+            trailing: ReorderableDragStartListener(
+              index: index,
+              child: const Icon(Icons.drag_handle, color: Colors.white38),
             ),
-            trailing: const Icon(Icons.drag_handle, color: Colors.white38),
           );
         },
       ),
@@ -124,6 +146,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile>
   late AnimationController _controller;
   final _queueScrollController = ScrollController();
   late VelocityTracker _queueVelocityTracker;
+  final _isReordering = ValueNotifier(false);
 
   bool get _queueAtTop =>
       !_queueScrollController.hasClients ||
@@ -140,6 +163,14 @@ class _HomeScreenMobileState extends State<HomeScreenMobile>
       lowerBound: 0,
       upperBound: 2,
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _queueScrollController.dispose();
+    _isReordering.dispose(); // ← clean up
+    super.dispose();
   }
 
   @override
@@ -181,6 +212,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile>
             _draggingQueue = false;
           },
           onPointerMove: (e) {
+            if (_isReordering.value) return;
             _queueVelocityTracker.addPosition(e.timeStamp, e.position);
             // latch on first qualifying move
             if (!_draggingQueue && _queueAtTop && e.delta.dy > 0) {
@@ -210,6 +242,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile>
                 factor >= 2, // ← disable scroll while dragging into position
             maxSize: screenHeight,
             factor: (factor - 1).clamp(0.0, 1.0),
+            isReordering: _isReordering,
           ),
         );
 
