@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
+import 'package:music_client/playback.dart';
 import 'package:music_client/util.dart';
 
 class Player extends StatelessWidget {
@@ -320,6 +321,9 @@ class CurrentPage extends ConsumerWidget {
                   );
 
                   return ListTile(
+                    onTap: () {
+                      ref.read(playbackServiceProvider).play(track);
+                    },
                     leading: cover.when(
                       loading: () => const SizedBox(
                         width: 40,

@@ -1,4 +1,7 @@
+import 'package:music_client/backend.dart';
 import 'package:xml/xml.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class Track {
   final String id;
@@ -27,4 +30,28 @@ class Track {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+final playbackServiceProvider = Provider((ref) {
+  return PlaybackService(ref);
+});
+
+class PlaybackService {
+  final Ref ref;
+  final AudioPlayer _player = AudioPlayer();
+
+  PlaybackService(this.ref);
+
+  Future<void> play(Track track) async {
+    final source = await ref.read(audioSourceProvider(track).future);
+
+    await _player.setAudioSource(source);
+    await _player.play();
+  }
+
+  Future<void> pause() => _player.pause();
+  Future<void> resume() => _player.play();
+  Future<void> stop() => _player.stop();
+
+  AudioPlayer get player => _player;
 }

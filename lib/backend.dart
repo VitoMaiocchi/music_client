@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:just_audio/just_audio.dart';
 import 'package:xml/xml.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'playback.dart';
@@ -11,6 +12,21 @@ final subsonicServiceProvider = Provider((ref) => SubsonicService());
 
 final starredTracksProvider = FutureProvider<List<Track>>((ref) async {
   return ref.read(subsonicServiceProvider).getStarred();
+});
+
+final audioSourceProvider = FutureProvider.family<AudioSource, Track>((
+  ref,
+  track,
+) async {
+  return ref.read(subsonicServiceProvider).getAudioSource(track.id);
+});
+
+final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
+  ref,
+  req,
+) async {
+  final service = ref.read(subsonicServiceProvider);
+  return service.getCoverArt(req.track.coverArt, size: req.size);
 });
 
 class CoverRequest {
@@ -28,14 +44,6 @@ class CoverRequest {
   @override
   int get hashCode => Object.hash(track.coverArt, size);
 }
-
-final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
-  ref,
-  req,
-) async {
-  final service = ref.read(subsonicServiceProvider);
-  return service.getCoverArt(req.track.coverArt, size: req.size);
-});
 
 class SubsonicService {
   String get _baseUrl => dotenv.env['SUBSONIC_URL']!;
@@ -97,5 +105,11 @@ class SubsonicService {
 
     final uri = _buildUri('getCoverArt', params);
     return NetworkImage(uri.toString());
+  }
+
+  Future<AudioSource> getAudioSource(String trackId) async {
+    final params = {'id': trackId};
+    final uri = _buildUri('stream', params);
+    return AudioSource.uri(Uri.parse(uri.toString()));
   }
 }
