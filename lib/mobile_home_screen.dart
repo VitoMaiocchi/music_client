@@ -96,9 +96,20 @@ class _QueueState extends State<Queue> {
             ),
             title: Container(height: 14, width: 120, color: Colors.white24),
             subtitle: Container(height: 11, width: 80, color: Colors.white12),
-            trailing: ReorderableDragStartListener(
-              index: index,
-              child: const Icon(Icons.drag_handle, color: Colors.white38),
+            trailing: Listener(
+              onPointerDown: (_) => widget.isReordering.value = true,
+              onPointerUp: (_) => widget.isReordering.value = false,
+              onPointerCancel: (_) => widget.isReordering.value = false,
+              child: ReorderableDragStartListener(
+                index: index,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: const Icon(Icons.drag_handle, color: Colors.white38),
+                ),
+              ),
             ),
           );
         },
