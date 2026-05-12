@@ -21,4 +21,10 @@ class Track {
       coverArt: element.getAttribute('coverArt') ?? '',
     );
   }
+
+  @override
+  bool operator ==(Object other) => other is Track && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

@@ -21,10 +21,12 @@ class CoverRequest {
 
   @override
   bool operator ==(Object other) =>
-      other is CoverRequest && other.track == track && other.size == size;
+      other is CoverRequest &&
+      other.track.coverArt == track.coverArt &&
+      other.size == size;
 
   @override
-  int get hashCode => Object.hash(track, size);
+  int get hashCode => Object.hash(track.coverArt, size);
 }
 
 final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
