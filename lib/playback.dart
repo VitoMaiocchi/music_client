@@ -36,6 +36,29 @@ final playbackServiceProvider = Provider((ref) {
   return PlaybackService(ref);
 });
 
+class CurrentTrackNotifier extends Notifier<Track?> {
+  @override
+  Track? build() => null;
+
+  void set(Track? track) => state = track;
+}
+
+final currentTrackProvider = NotifierProvider<CurrentTrackNotifier, Track?>(
+  CurrentTrackNotifier.new,
+);
+
+final positionProvider = StreamProvider<Duration>((ref) {
+  return ref.read(playbackServiceProvider).player.positionStream;
+});
+
+final durationProvider = StreamProvider<Duration?>((ref) {
+  return ref.read(playbackServiceProvider).player.durationStream;
+});
+
+final playerStateProvider = StreamProvider<PlayerState>((ref) {
+  return ref.read(playbackServiceProvider).player.playerStateStream;
+});
+
 class PlaybackService {
   final Ref ref;
   final AudioPlayer _player = AudioPlayer();
@@ -43,8 +66,8 @@ class PlaybackService {
   PlaybackService(this.ref);
 
   Future<void> play(Track track) async {
+    ref.read(currentTrackProvider.notifier).set(track);
     final source = await ref.read(audioSourceProvider(track).future);
-
     await _player.setAudioSource(source);
     await _player.play();
   }
@@ -52,6 +75,5 @@ class PlaybackService {
   Future<void> pause() => _player.pause();
   Future<void> resume() => _player.play();
   Future<void> stop() => _player.stop();
-
   AudioPlayer get player => _player;
 }
