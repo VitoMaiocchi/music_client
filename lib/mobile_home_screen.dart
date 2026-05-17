@@ -23,10 +23,7 @@ class Player extends ConsumerWidget {
     final track = ref.watch(currentTrackProvider);
     final position = ref
         .watch(positionProvider)
-        .maybeWhen(
-          data: (value) => value ?? Duration.zero,
-          orElse: () => Duration.zero,
-        );
+        .maybeWhen(data: (value) => value, orElse: () => Duration.zero);
     final duration = ref
         .watch(durationProvider)
         .maybeWhen(
@@ -42,46 +39,59 @@ class Player extends ConsumerWidget {
     final service = ref.read(playbackServiceProvider);
 
     final height = minSize + (maxSize - minSize) * factor;
-    final collapsed = (1 - factor * 2).clamp(0.0, 1.0);
-    final expanded = ((factor - 0.5) * 2).clamp(0.0, 1.0);
+    final collapsed = (1 - factor * 5).clamp(0.0, 1.0);
+    final expanded = ((factor - 0.2) * 5).clamp(0.0, 1.0);
     final progress = duration.inMilliseconds > 0
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0; // ignore: unnecessary_null_in_if_null_operators
 
     return Container(
-      height: height,
-      clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(
-        color: Color(0xFF111111),
-        border: Border(top: BorderSide(color: Color(0xFF2A2A2A))),
-      ),
-      child: Stack(
-        children: [
-          if (collapsed > 0)
-            Opacity(
-              opacity: collapsed,
-              child: _Collapsed(
-                track: track,
-                isPlaying: isPlaying,
-                progress: progress,
-                service: service,
-                ref: ref,
-              ),
+      color: const Color(0xFF111111),
+      child: ClipRect(
+        child: SizedBox(
+          height: height,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Stack(
+              children: [
+                if (collapsed > 0)
+                  Opacity(
+                    opacity: collapsed,
+                    child: SizedBox(
+                      height: minSize,
+                      child: _Collapsed(
+                        track: track,
+                        isPlaying: isPlaying,
+                        progress: progress,
+                        service: service,
+                        ref: ref,
+                      ),
+                    ),
+                  ),
+                if (expanded > 0)
+                  Opacity(
+                    opacity: expanded,
+                    child: OverflowBox(
+                      maxHeight: maxSize,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        height: maxSize,
+                        child: _Expanded(
+                          track: track,
+                          isPlaying: isPlaying,
+                          position: position,
+                          duration: duration,
+                          progress: progress,
+                          service: service,
+                          ref: ref,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          if (expanded > 0)
-            Opacity(
-              opacity: expanded,
-              child: _Expanded(
-                track: track,
-                isPlaying: isPlaying,
-                position: position,
-                duration: duration,
-                progress: progress,
-                service: service,
-                ref: ref,
-              ),
-            ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -301,14 +311,17 @@ class _Cover extends ConsumerWidget {
     if (track == null) {
       return _placeholder(rounded);
     }
-    final cover = ref.watch(coverProvider(CoverRequest(track!, size)));
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final cover = ref.watch(
+      coverProvider(CoverRequest(track!, size * dpr.ceil())),
+    );
     return cover.when(
       data: (img) => ClipRRect(
         borderRadius: BorderRadius.circular(rounded),
         child: Image(image: img, fit: BoxFit.cover),
       ),
       loading: () => _placeholder(rounded),
-      error: (_, __) => _placeholder(rounded),
+      error: (_, _) => _placeholder(rounded),
     );
   }
 
