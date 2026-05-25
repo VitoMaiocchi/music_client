@@ -661,7 +661,7 @@ class CurrentPage extends ConsumerWidget {
 
                   return ListTile(
                     onTap: () {
-                      ref.read(playbackServiceProvider).play(track);
+                      ref.read(playbackServiceProvider).play(tracks, i);
                     },
                     leading: cover.when(
                       loading: () => const SizedBox(
