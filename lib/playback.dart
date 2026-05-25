@@ -149,17 +149,35 @@ class Queue {
   }
 
   Queue reorder(int oldIndex, int newIndex) {
-    if (oldIndex <= _current || oldIndex >= _queueEntries.length) return this;
-    if (newIndex <= _current || newIndex >= _queueEntries.length) return this;
-    final newQueue = List.of(_queueEntries);
-    final entry = newQueue.removeAt(oldIndex);
-    newQueue.insert(newIndex, entry);
+    if (oldIndex <= 0 || newIndex <= 0) return this;
+    if (oldIndex == newIndex) return this;
+
+    final absOld = _current + oldIndex;
+    final absNew = _current + newIndex;
+    if (absOld >= _queueEntries.length || absNew >= _queueEntries.length) {
+      return this;
+    }
+
+    // absNew lives in the post-remove list. Recover the original-index destination
+    // so the zone comparison against _userQueueEnd is correct.
+    final wasUserQueue = absOld < _userQueueEnd;
+    final originalDest = absOld < absNew ? absNew + 1 : absNew;
+    final isNowUserQueue = originalDest < _userQueueEnd;
+
+    int newUserQueueEnd = _userQueueEnd;
+    if (wasUserQueue && !isNowUserQueue) newUserQueueEnd--;
+    if (!wasUserQueue && isNowUserQueue) newUserQueueEnd++;
+
+    final newEntries = List.of(_queueEntries);
+    final entry = newEntries.removeAt(absOld);
+    newEntries.insert(absNew, entry);
+
     return Queue._internal(
       _previousQueue,
       _source,
-      newQueue,
+      newEntries,
       _current,
-      _userQueueEnd,
+      newUserQueueEnd,
     );
   }
 }

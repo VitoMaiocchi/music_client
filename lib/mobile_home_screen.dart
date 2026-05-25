@@ -366,7 +366,15 @@ class _PlayPauseButton extends StatelessWidget {
   }
 }
 
-class Queue extends ConsumerStatefulWidget {
+// Named record used as a flat item descriptor for the ReorderableListView.
+typedef _ListItem = ({
+  Key key,
+  int? relative, // 1-based relative to current; null for non-track rows
+  String? section, // non-null → this row is a section header
+  bool isCurrent, // true → currently-playing track row
+});
+
+class Queue extends ConsumerWidget {
   final double maxSize;
   final double factor;
   final ScrollController scrollController;
@@ -383,109 +391,270 @@ class Queue extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<Queue> createState() => _QueuePanelState();
-}
-
-class _QueuePanelState extends ConsumerState<Queue> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
-    final (history, queueSize, _) = queue.size();
+    final (_, queueSize, relUserQueueEnd) = queue.size();
 
-    // _current is not exposed, but size() gives history = -_current
-    final absoluteCurrent = -history;
+    // relUserQueueEnd == relative index of the first autoplay track.
+    final uqCount = relUserQueueEnd - 1;
+    final apCount = (queueSize - relUserQueueEnd).clamp(0, queueSize);
 
-    // Show everything after the current track (relative index 1 onward)
-    final itemCount = (queueSize - 1).clamp(0, double.maxFinite.toInt());
+    // ── Build the flat item list ───────────────────────────────────────────────
+    final items = <_ListItem>[];
 
+    // Now Playing
+    items.add((
+      key: const ValueKey('h:now_playing'),
+      relative: null,
+      section: 'Now Playing',
+      isCurrent: false,
+    ));
+    items.add((
+      key: ValueKey('t:current:${queue[0]?.id}'),
+      relative: null,
+      section: null,
+      isCurrent: true,
+    ));
+
+    // Next Up  (user queue)
+    if (uqCount > 0) {
+      items.add((
+        key: const ValueKey('h:next_up'),
+        relative: null,
+        section: 'Next Up',
+        isCurrent: false,
+      ));
+      for (var i = 1; i <= uqCount; i++) {
+        final t = queue[i];
+        if (t != null) {
+          items.add((
+            key: ValueKey('t:${t.id}'),
+            relative: i,
+            section: null,
+            isCurrent: false,
+          ));
+        }
+      }
+    }
+
+    // Autoplay
+    if (apCount > 0) {
+      items.add((
+        key: const ValueKey('h:autoplay'),
+        relative: null,
+        section: 'Autoplay',
+        isCurrent: false,
+      ));
+      for (var i = relUserQueueEnd; i < queueSize; i++) {
+        final t = queue[i];
+        if (t != null) {
+          items.add((
+            key: ValueKey('t:${t.id}'),
+            relative: i,
+            section: null,
+            isCurrent: false,
+          ));
+        }
+      }
+    }
+
+    // ── Widget ────────────────────────────────────────────────────────────────
     return Container(
-      height: widget.maxSize * widget.factor,
       color: Colors.blue,
-      child: ReorderableListView.builder(
-        scrollController: widget.scrollController,
-        physics: widget.scrollable
-            ? const ClampingScrollPhysics()
-            : const NeverScrollableScrollPhysics(),
-        itemCount: itemCount,
-        onReorderStart: (_) => widget.isReordering.value = true,
-        onReorderEnd: (_) => widget.isReordering.value = false,
-        onReorder: (oldIndex, newIndex) {
-          widget.isReordering.value = false;
+      child: SizedBox(
+        height: maxSize * factor,
+        child: ReorderableListView.builder(
+          scrollController: scrollController,
+          buildDefaultDragHandles:
+              false, // only explicit drag handles can initiate
+          physics: scrollable
+              ? const ClampingScrollPhysics()
+              : const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          onReorderStart: (_) => isReordering.value = true,
+          onReorderEnd: (_) => isReordering.value = false,
+          onReorder: (oldListIndex, newListIndex) {
+            isReordering.value = false;
+            if (newListIndex > oldListIndex) newListIndex--;
 
-          // ReorderableListView quirk: newIndex is past the gap when moving down
-          if (newIndex > oldIndex) newIndex--;
+            final oldRel = items[oldListIndex].relative;
+            final newRel = items[newListIndex].relative;
 
-          // Shift from list-local indices to absolute _queueEntries indices.
-          // List index 0 == relative queue index 1 == absolute (current + 1).
-          final absOld = absoluteCurrent + 1 + oldIndex;
-          final absNew = absoluteCurrent + 1 + newIndex;
+            // Dropping on a header or the current-track row → no-op.
+            if (oldRel == null || newRel == null) return;
 
-          ref.read(queueProvider.notifier).reorder(absOld, absNew);
-        },
-        itemBuilder: (context, index) {
-          // Relative index +1 so we skip the currently playing track (index 0)
-          final track = queue[index + 1];
+            ref.read(queueProvider.notifier).reorder(oldRel, newRel);
+          },
+          itemBuilder: (context, index) {
+            final item = items[index];
 
-          // Shouldn't happen given itemCount, but guard defensively
-          if (track == null) {
-            return const SizedBox.shrink(key: ValueKey('__null__'));
-          }
+            if (item.section != null) {
+              return _SectionHeader(
+                key: item.key,
+                title: item.section!,
+                isAutoplay: item.section == 'Autoplay',
+              );
+            }
 
-          return ListTile(
-            key: ValueKey(track.id),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: track.coverArt.isNotEmpty
-                  ? Image.network(
-                      // Swap in your actual cover-art URL builder here
-                      'https://your-server/rest/getCoverArt'
-                      '?id=${track.coverArt}&size=48',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderArt(),
-                    )
-                  : _placeholderArt(),
-            ),
-            title: Text(
-              track.title,
-              style: const TextStyle(color: Colors.white),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              track.artist,
-              style: const TextStyle(color: Colors.white70),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Listener(
-              onPointerDown: (_) => widget.isReordering.value = true,
-              onPointerUp: (_) => widget.isReordering.value = false,
-              onPointerCancel: (_) => widget.isReordering.value = false,
-              child: ReorderableDragStartListener(
-                index: index,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Icon(Icons.drag_handle, color: Colors.white38),
-                ),
-              ),
-            ),
-          );
-        },
+            if (item.isCurrent) {
+              return _CurrentTrackTile(key: item.key, track: queue[0]);
+            }
+
+            final track = queue[item.relative!];
+            if (track == null) return SizedBox.shrink(key: item.key);
+
+            return _QueueTrackTile(
+              key: item.key,
+              track: track,
+              listIndex: index,
+              isReordering: isReordering,
+            );
+          },
+        ),
       ),
     );
   }
+}
 
-  Widget _placeholderArt() => Container(
-    width: 48,
-    height: 48,
-    decoration: BoxDecoration(
-      color: Colors.white24,
+// ── Helper widgets ────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final bool isAutoplay;
+
+  const _SectionHeader({
+    super.key,
+    required this.title,
+    this.isAutoplay = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      child: Row(
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          if (isAutoplay) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.all_inclusive, size: 13, color: Colors.white38),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CurrentTrackTile extends StatelessWidget {
+  final Track? track;
+
+  const _CurrentTrackTile({super.key, required this.track});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.white10,
+      child: ListTile(
+        leading: _CoverArt(id: track?.coverArt),
+        title: Text(
+          track?.title ?? '—',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          track?.artist ?? '',
+          style: const TextStyle(color: Colors.white70),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: const Icon(Icons.volume_up, color: Colors.white54, size: 18),
+      ),
+    );
+  }
+}
+
+class _QueueTrackTile extends StatelessWidget {
+  final Track track;
+  final int listIndex;
+  final ValueNotifier<bool> isReordering;
+
+  const _QueueTrackTile({
+    super.key,
+    required this.track,
+    required this.listIndex,
+    required this.isReordering,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: _CoverArt(id: track.coverArt),
+      title: Text(
+        track.title,
+        style: const TextStyle(color: Colors.white),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        track.artist,
+        style: const TextStyle(color: Colors.white70),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Listener(
+        onPointerDown: (_) => isReordering.value = true,
+        onPointerUp: (_) => isReordering.value = false,
+        onPointerCancel: (_) => isReordering.value = false,
+        child: ReorderableDragStartListener(
+          index: listIndex,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Icon(Icons.drag_handle, color: Colors.white38),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoverArt extends StatelessWidget {
+  final String? id;
+
+  const _CoverArt({this.id});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
       borderRadius: BorderRadius.circular(4),
-    ),
-    child: const Icon(Icons.music_note, color: Colors.white38),
-  );
+      child: ColoredBox(
+        color: Colors.white12,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: (id != null && id!.isNotEmpty)
+              ? Image.network(
+                  'https://your-server/rest/getCoverArt?id=$id&size=48',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.music_note, color: Colors.white38),
+                )
+              : const Icon(Icons.music_note, color: Colors.white38),
+        ),
+      ),
+    );
+  }
 }
 
 class NavigationBar extends StatelessWidget {
