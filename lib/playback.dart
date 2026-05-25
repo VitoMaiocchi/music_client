@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:music_client/backend.dart';
+import 'package:uuid/uuid.dart';
 import 'package:xml/xml.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,8 +53,9 @@ class EmptyTrackList extends TrackList {
 class _QueueEntry {
   final Track? track; //only defined for UserQueue entries
   final int? position; //only defined for SourceQueue entries
+  final String uuid;
 
-  const _QueueEntry(this.track, this.position);
+  const _QueueEntry(this.track, this.position, this.uuid);
 }
 
 @immutable
@@ -88,22 +90,22 @@ class Queue {
     );
   }
 
-  // Returns track at index relative to current Track
-  Track? operator [](int index) {
+  // Returns track at index relative to current Track and its uuid. Returns null if index is out of bounds.
+  (Track, String)? operator [](int index) {
     int queueIndex = _current + index;
     if (queueIndex < 0 || queueIndex >= _queueEntries.length) return null;
     final entry = _queueEntries[queueIndex];
     if (entry.track != null) {
-      return entry.track!;
+      return (entry.track!, entry.uuid);
     } else {
-      return _source.tracks[entry.position!];
+      return (_source.tracks[entry.position!], entry.uuid);
     }
   }
 
   Queue setSource(TrackList newSource, int current) {
     final newQueueEntries = List.generate(
       newSource.tracks.length,
-      (i) => _QueueEntry(null, i),
+      (i) => _QueueEntry(null, i, const Uuid().v4()),
     );
     return Queue._internal(
       this,
@@ -138,7 +140,7 @@ class Queue {
 
   Queue add(Track track) {
     final newQueue = List.of(_queueEntries)
-      ..insert(_userQueueEnd, _QueueEntry(track, null));
+      ..insert(_userQueueEnd, _QueueEntry(track, null, const Uuid().v4()));
     return Queue._internal(
       _previousQueue,
       _source,

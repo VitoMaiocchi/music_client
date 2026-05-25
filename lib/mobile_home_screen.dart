@@ -410,7 +410,7 @@ class Queue extends ConsumerWidget {
       isCurrent: false,
     ));
     items.add((
-      key: ValueKey('t:current:${queue[0]?.id}'),
+      key: ValueKey('t:current:${queue[0]?.$2}'),
       relative: null,
       section: null,
       isCurrent: true,
@@ -428,7 +428,7 @@ class Queue extends ConsumerWidget {
         final t = queue[i];
         if (t != null) {
           items.add((
-            key: ValueKey('t:${t.id}'),
+            key: ValueKey('t:${t.$2}'),
             relative: i,
             section: null,
             isCurrent: false,
@@ -449,7 +449,7 @@ class Queue extends ConsumerWidget {
         final t = queue[i];
         if (t != null) {
           items.add((
-            key: ValueKey('t:${t.id}'),
+            key: ValueKey('t:${t.$2}'),
             relative: i,
             section: null,
             isCurrent: false,
@@ -497,10 +497,10 @@ class Queue extends ConsumerWidget {
             }
 
             if (item.isCurrent) {
-              return _CurrentTrackTile(key: item.key, track: queue[0]);
+              return _CurrentTrackTile(key: item.key, track: queue[0]?.$1);
             }
 
-            final track = queue[item.relative!];
+            final track = queue[item.relative!]?.$1;
             if (track == null) return SizedBox.shrink(key: item.key);
 
             return _QueueTrackTile(
@@ -849,7 +849,7 @@ class CurrentPage extends ConsumerWidget {
             final track = tracks[i];
 
             return SwipeableTile(
-              onSwipeLeft: () => debugPrint('left triggered on ${track.title}'),
+              onSwipeLeft: () => ref.read(queueProvider.notifier).add(track),
               onSwipeRight: () =>
                   debugPrint('right triggered on ${track.title}'),
               child: Consumer(
