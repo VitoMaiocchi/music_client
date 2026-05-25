@@ -563,7 +563,9 @@ class _CurrentTrackTile extends StatelessWidget {
     return ColoredBox(
       color: Colors.white10,
       child: ListTile(
-        leading: _CoverArt(id: track?.coverArt),
+        leading: _CoverArt(
+          track: track ?? Track(id: '', title: '', artist: '', coverArt: ''),
+        ),
         title: Text(
           track?.title ?? '—',
           style: const TextStyle(
@@ -600,7 +602,7 @@ class _QueueTrackTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: _CoverArt(id: track.coverArt),
+      leading: _CoverArt(track: track),
       title: Text(
         track.title,
         style: const TextStyle(color: Colors.white),
@@ -630,12 +632,14 @@ class _QueueTrackTile extends StatelessWidget {
 }
 
 class _CoverArt extends StatelessWidget {
-  final String? id;
+  final Track track;
 
-  const _CoverArt({this.id});
+  const _CoverArt({required this.track});
 
   @override
   Widget build(BuildContext context) {
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
       child: ColoredBox(
@@ -643,14 +647,24 @@ class _CoverArt extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: (id != null && id!.isNotEmpty)
-              ? Image.network(
-                  'https://your-server/rest/getCoverArt?id=$id&size=48',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.music_note, color: Colors.white38),
-                )
-              : const Icon(Icons.music_note, color: Colors.white38),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final cover = ref.watch(
+                coverProvider(CoverRequest(track, (48 * dpr).ceil())),
+              );
+
+              return cover.when(
+                loading: () => const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: (_, _) => const Icon(Icons.music_note),
+                data: (img) =>
+                    Image(image: img, width: 40, height: 40, fit: BoxFit.cover),
+              );
+            },
+          ),
         ),
       ),
     );
