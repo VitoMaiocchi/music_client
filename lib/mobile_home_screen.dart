@@ -366,7 +366,7 @@ class _PlayPauseButton extends StatelessWidget {
   }
 }
 
-class Queue extends StatefulWidget {
+class Queue extends ConsumerStatefulWidget {
   final double maxSize;
   final double factor;
   final ScrollController scrollController;
@@ -383,20 +383,21 @@ class Queue extends StatefulWidget {
   });
 
   @override
-  State<Queue> createState() => _QueueState();
+  ConsumerState<Queue> createState() => _QueuePanelState();
 }
 
-class _QueueState extends State<Queue> {
-  late List<int> items;
-
-  @override
-  void initState() {
-    super.initState();
-    items = List.generate(30, (i) => i + 1);
-  }
-
+class _QueuePanelState extends ConsumerState<Queue> {
   @override
   Widget build(BuildContext context) {
+    final queue = ref.watch(queueProvider);
+    final (history, queueSize, _) = queue.size();
+
+    // _current is not exposed, but size() gives history = -_current
+    final absoluteCurrent = -history;
+
+    // Show everything after the current track (relative index 1 onward)
+    final itemCount = (queueSize - 1).clamp(0, double.maxFinite.toInt());
+
     return Container(
       height: widget.maxSize * widget.factor,
       color: Colors.blue,
@@ -405,49 +406,68 @@ class _QueueState extends State<Queue> {
         physics: widget.scrollable
             ? const ClampingScrollPhysics()
             : const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
+        itemCount: itemCount,
         onReorderStart: (_) => widget.isReordering.value = true,
         onReorderEnd: (_) => widget.isReordering.value = false,
         onReorder: (oldIndex, newIndex) {
-          setState(() {
-            widget.isReordering.value = false;
-            if (newIndex > oldIndex) newIndex--;
-            final item = items.removeAt(oldIndex);
-            items.insert(newIndex, item);
-          });
+          widget.isReordering.value = false;
+
+          // ReorderableListView quirk: newIndex is past the gap when moving down
+          if (newIndex > oldIndex) newIndex--;
+
+          // Shift from list-local indices to absolute _queueEntries indices.
+          // List index 0 == relative queue index 1 == absolute (current + 1).
+          final absOld = absoluteCurrent + 1 + oldIndex;
+          final absNew = absoluteCurrent + 1 + newIndex;
+
+          ref.read(queueProvider.notifier).reorder(absOld, absNew);
         },
         itemBuilder: (context, index) {
-          final value = items[index];
+          // Relative index +1 so we skip the currently playing track (index 0)
+          final track = queue[index + 1];
+
+          // Shouldn't happen given itemCount, but guard defensively
+          if (track == null) {
+            return const SizedBox.shrink(key: ValueKey('__null__'));
+          }
 
           return ListTile(
-            key: ValueKey(value),
-            leading: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$value',
-                style: const TextStyle(color: Colors.white),
-              ),
+            key: ValueKey(track.id),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: track.coverArt.isNotEmpty
+                  ? Image.network(
+                      // Swap in your actual cover-art URL builder here
+                      'https://your-server/rest/getCoverArt'
+                      '?id=${track.coverArt}&size=48',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholderArt(),
+                    )
+                  : _placeholderArt(),
             ),
-            title: Container(height: 14, width: 120, color: Colors.white24),
-            subtitle: Container(height: 11, width: 80, color: Colors.white12),
+            title: Text(
+              track.title,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              track.artist,
+              style: const TextStyle(color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             trailing: Listener(
               onPointerDown: (_) => widget.isReordering.value = true,
               onPointerUp: (_) => widget.isReordering.value = false,
               onPointerCancel: (_) => widget.isReordering.value = false,
               child: ReorderableDragStartListener(
                 index: index,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: const Icon(Icons.drag_handle, color: Colors.white38),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Icon(Icons.drag_handle, color: Colors.white38),
                 ),
               ),
             ),
@@ -456,6 +476,16 @@ class _QueueState extends State<Queue> {
       ),
     );
   }
+
+  Widget _placeholderArt() => Container(
+    width: 48,
+    height: 48,
+    decoration: BoxDecoration(
+      color: Colors.white24,
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: const Icon(Icons.music_note, color: Colors.white38),
+  );
 }
 
 class NavigationBar extends StatelessWidget {
