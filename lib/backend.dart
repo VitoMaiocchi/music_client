@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:xml/xml.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'playback.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 final subsonicServiceProvider = Provider((ref) => SubsonicService());
 
@@ -27,6 +27,14 @@ final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
 ) async {
   final service = ref.read(subsonicServiceProvider);
   return service.getCoverArt(req.track.coverArt, size: req.size);
+});
+
+final coverPaletteProvider = FutureProvider.family<PaletteGenerator, String>((
+  ref,
+  coverArtId,
+) async {
+  final service = ref.read(subsonicServiceProvider);
+  return service.getCoverPalette(coverArtId);
 });
 
 class CoverRequest {
@@ -105,6 +113,14 @@ class SubsonicService {
 
     final uri = _buildUri('getCoverArt', params);
     return NetworkImage(uri.toString());
+  }
+
+  Future<PaletteGenerator> getCoverPalette(String coverArtId) async {
+    final image = getCoverArt(coverArtId, size: 64);
+    return PaletteGenerator.fromImageProvider(
+      await image,
+      maximumColorCount: 16,
+    );
   }
 
   Future<AudioSource> getAudioSource(String trackId) async {
