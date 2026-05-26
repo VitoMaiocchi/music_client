@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
-import 'package:palette_generator/palette_generator.dart'; // adjust import to your package
+import 'package:palette_generator/palette_generator.dart';
 
-// Helper class to hold all dynamic colors for the player UI.
 class _PlayerColors {
   final Color background;
-  final Color surface; // used for collapsed background, placeholder
-  final Color primary; // accent color (progress, play button)
-  final Color onPrimary; // icon/text on primary
-  final Color text; // main text (title)
-  final Color secondaryText; // artist, time labels
+  final Color surface;
+  final Color primary;
+  final Color onPrimary;
+  final Color text;
+  final Color secondaryText;
   final Color progressBackground;
   final Color progressValue;
   final Color sliderActive;
@@ -38,7 +37,6 @@ class _PlayerColors {
     required this.placeholderIcon,
   });
 
-  // Default dark theme (matches original hardcoded colours)
   factory _PlayerColors.defaultDark() {
     return _PlayerColors(
       background: const Color(0xFF111111),
@@ -58,30 +56,20 @@ class _PlayerColors {
     );
   }
 
-  // Build from PaletteGenerator
   factory _PlayerColors.fromPalette(PaletteGenerator palette) {
-    // Get the most suitable colors, with fallbacks to the default dark palette
     final defaultColors = _PlayerColors.defaultDark();
 
-    // Dominant color is a good candidate for background/surface
     final dominant = palette.dominantColor?.color ?? defaultColors.background;
-
-    // Vibrant color works well for accents (progress, play button)
     final vibrant = palette.vibrantColor?.color ?? defaultColors.primary;
-
-    // Muted color can be used for subtle surfaces
     final muted = palette.mutedColor?.color ?? defaultColors.progressBackground;
 
-    // Compute contrasting text colors (simple luminance check)
-    Color onVibrant = defaultColors.onPrimary;
+    Color onVibrant;
     if (vibrant.computeLuminance() > 0.5) {
       onVibrant = Colors.black;
     } else {
       onVibrant = Colors.white;
     }
 
-    // For text, use dominant color with enough contrast – but often we want light text on dark bg
-    // So we keep light text and dark background from dominant, or fallback to default.
     final isDominantDark = dominant.computeLuminance() < 0.5;
     final textColor = isDominantDark ? Colors.white : Colors.black;
     final secondaryTextColor = isDominantDark ? Colors.white70 : Colors.black54;
@@ -124,7 +112,6 @@ class Player extends ConsumerWidget {
     final coverArtId = track?.id ?? '';
     final paletteAsync = ref.watch(coverPaletteProvider(coverArtId));
 
-    // Resolve palette and convert to _PlayerColors
     final playerColors = paletteAsync.when(
       data: (palette) => _PlayerColors.fromPalette(palette),
       loading: () => _PlayerColors.defaultDark(),
@@ -295,7 +282,7 @@ class _Expanded extends StatelessWidget {
   final double progress;
   final PlaybackService service;
   final _PlayerColors colors;
-  final AsyncValue<PaletteGenerator>? paletteAsync; // used only for debug
+  final AsyncValue<PaletteGenerator>? paletteAsync;
   final WidgetRef ref;
 
   const _Expanded({
@@ -403,12 +390,29 @@ class _Expanded extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Play / pause
-          _PlayPauseButton(
-            isPlaying: isPlaying,
-            service: service,
-            size: 56,
-            colors: colors,
+          // Previous | Play/Pause | Next
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _SkipButton(
+                icon: Icons.skip_previous_rounded,
+                colors: colors,
+                onTap: () => ref.read(queueProvider.notifier).previous(),
+              ),
+              const SizedBox(width: 24),
+              _PlayPauseButton(
+                isPlaying: isPlaying,
+                service: service,
+                size: 56,
+                colors: colors,
+              ),
+              const SizedBox(width: 24),
+              _SkipButton(
+                icon: Icons.skip_next_rounded,
+                colors: colors,
+                onTap: () => ref.read(queueProvider.notifier).next(),
+              ),
+            ],
           ),
         ],
       ),
@@ -501,6 +505,32 @@ class _PlayPauseButton extends StatelessWidget {
   }
 }
 
+class _SkipButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final _PlayerColors colors;
+  final double size;
+
+  const _SkipButton({
+    required this.icon,
+    required this.onTap,
+    required this.colors,
+    this.size = 44,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Icon(icon, color: colors.text, size: size * 0.6),
+      ),
+    );
+  }
+}
+
 class _PaletteDebugOverlay extends StatelessWidget {
   final AsyncValue<PaletteGenerator> paletteAsync;
 
@@ -510,7 +540,6 @@ class _PaletteDebugOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return paletteAsync.when(
       data: (palette) {
-        // Collect all available colors from PaletteGenerator
         final colors = <String, Color?>{
           'dominant': palette.dominantColor?.color,
           'vibrant': palette.vibrantColor?.color,
@@ -521,7 +550,6 @@ class _PaletteDebugOverlay extends StatelessWidget {
           'lightMuted': palette.lightMutedColor?.color,
         };
 
-        // Filter out nulls
         final entries = colors.entries.where((e) => e.value != null).toList();
 
         return Container(
