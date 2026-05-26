@@ -398,6 +398,7 @@ class _Expanded extends StatelessWidget {
                 icon: Icons.skip_previous_rounded,
                 colors: colors,
                 onTap: () => ref.read(queueProvider.notifier).previous(),
+                size: 44,
               ),
               const SizedBox(width: 24),
               _PlayPauseButton(
@@ -411,6 +412,7 @@ class _Expanded extends StatelessWidget {
                 icon: Icons.skip_next_rounded,
                 colors: colors,
                 onTap: () => ref.read(queueProvider.notifier).next(),
+                size: 44,
               ),
             ],
           ),
@@ -515,7 +517,7 @@ class _SkipButton extends StatelessWidget {
     required this.icon,
     required this.onTap,
     required this.colors,
-    this.size = 44,
+    required this.size,
   });
 
   @override
