@@ -116,7 +116,7 @@ class SubsonicService {
   }
 
   Future<PaletteGenerator> getCoverPalette(String coverArtId) async {
-    final image = getCoverArt(coverArtId, size: 200);
+    final image = getCoverArt(coverArtId, size: 500);
     return PaletteGenerator.fromImageProvider(
       await image,
       maximumColorCount: 16,

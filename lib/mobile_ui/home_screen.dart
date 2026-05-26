@@ -210,7 +210,9 @@ class CurrentPage extends ConsumerWidget {
 
                   return ListTile(
                     onTap: () {
-                      ref.read(playbackServiceProvider).play(tracks, i);
+                      ref
+                          .read(queueProvider.notifier)
+                          .setSource(TrackList(tracks), i);
                     },
                     leading: cover.when(
                       loading: () => const SizedBox(

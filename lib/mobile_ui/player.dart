@@ -119,7 +119,8 @@ class Player extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final track = ref.watch(currentTrackProvider);
+    final queue = ref.watch(queueProvider);
+    final track = queue[0]?.$1;
     final coverArtId = track?.id ?? '';
     final paletteAsync = ref.watch(coverPaletteProvider(coverArtId));
 
@@ -482,7 +483,7 @@ class _PlayPauseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: isPlaying ? service.pause : service.resume,
+      onTap: isPlaying ? service.pause : service.play,
       child: Container(
         width: size,
         height: size,

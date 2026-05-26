@@ -5,6 +5,24 @@ import 'package:xml/xml.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final queueProvider = NotifierProvider<QueueNotifier, Queue>(QueueNotifier.new);
+
+final playbackServiceProvider = Provider((ref) {
+  return PlaybackService(ref);
+});
+
+final positionProvider = StreamProvider<Duration>((ref) {
+  return ref.read(playbackServiceProvider).player.positionStream;
+});
+
+final durationProvider = StreamProvider<Duration?>((ref) {
+  return ref.read(playbackServiceProvider).player.durationStream;
+});
+
+final playerStateProvider = StreamProvider<PlayerState>((ref) {
+  return ref.read(playbackServiceProvider).player.playerStateStream;
+});
+
 class Track {
   final String id;
   final String title;
@@ -201,52 +219,29 @@ class QueueNotifier extends Notifier<Queue> {
       state = state.reorder(oldIndex, newIndex);
 }
 
-final queueProvider = NotifierProvider<QueueNotifier, Queue>(QueueNotifier.new);
-
-final playbackServiceProvider = Provider((ref) {
-  return PlaybackService(ref);
-});
-
-class CurrentTrackNotifier extends Notifier<Track?> {
-  @override
-  Track? build() => null;
-
-  void set(Track? track) => state = track;
-}
-
-final currentTrackProvider = NotifierProvider<CurrentTrackNotifier, Track?>(
-  CurrentTrackNotifier.new,
-);
-
-final positionProvider = StreamProvider<Duration>((ref) {
-  return ref.read(playbackServiceProvider).player.positionStream;
-});
-
-final durationProvider = StreamProvider<Duration?>((ref) {
-  return ref.read(playbackServiceProvider).player.durationStream;
-});
-
-final playerStateProvider = StreamProvider<PlayerState>((ref) {
-  return ref.read(playbackServiceProvider).player.playerStateStream;
-});
-
 class PlaybackService {
-  final Ref ref;
+  final Ref _ref;
   final AudioPlayer _player = AudioPlayer();
 
-  PlaybackService(this.ref);
-
-  Future<void> play(List<Track> tracks, int index) async {
-    ref.read(queueProvider.notifier).setSource(TrackList(tracks), index);
-    final track = tracks[index];
-    ref.read(currentTrackProvider.notifier).set(track);
-    final source = await ref.read(audioSourceProvider(track).future);
-    await _player.setAudioSource(source);
-    await _player.play();
+  PlaybackService(this._ref) {
+    _ref.listen(queueProvider, (previous, next) {
+      if (previous == next) return;
+      final current = next[0];
+      if (current == null) return;
+      if (current.$2 == previous?[0]?.$2) return;
+      _ref.read(audioSourceProvider(current.$1).future).then((source) async {
+        await _player.setAudioSource(source);
+        await _player.play();
+      });
+    });
+    _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        _ref.read(queueProvider.notifier).next();
+      }
+    });
   }
 
   Future<void> pause() => _player.pause();
-  Future<void> resume() => _player.play();
-  Future<void> stop() => _player.stop();
+  Future<void> play() => _player.play();
   AudioPlayer get player => _player;
 }
