@@ -222,7 +222,7 @@ class CurrentPage extends ConsumerWidget {
                       ),
                       error: (_, _) => const Icon(Icons.music_note),
                       data: (img) => Image(
-                        image: img,
+                        image: img.image,
                         width: 40,
                         height: 40,
                         fit: BoxFit.cover,

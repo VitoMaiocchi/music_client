@@ -109,13 +109,22 @@ class Player extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
     final track = queue[0]?.$1;
-    final coverArtId = track?.id ?? '';
-    final paletteAsync = ref.watch(coverPaletteProvider(coverArtId));
-
-    final playerColors = paletteAsync.when(
-      data: (palette) => _PlayerColors.fromPalette(palette),
-      loading: () => _PlayerColors.defaultDark(),
-      error: (_, __) => _PlayerColors.defaultDark(),
+    final cover = track != null
+        ? ref.watch(coverProvider(CoverRequest(track, 300)))
+        : const AsyncValue.data(null);
+    final coverImage = cover.maybeWhen(
+      data: (c) => c?.image,
+      orElse: () => null,
+    );
+    final playerColors = cover.maybeWhen(
+      data: (c) => c != null
+          ? _PlayerColors.fromPalette(c.palette)
+          : _PlayerColors.defaultDark(),
+      orElse: () => _PlayerColors.defaultDark(),
+    );
+    final palette = cover.maybeWhen(
+      data: (c) => c?.palette,
+      orElse: () => null,
     );
 
     final position = ref
@@ -154,6 +163,7 @@ class Player extends ConsumerWidget {
                     child: SizedBox(
                       height: minSize,
                       child: _Collapsed(
+                        imageProvider: coverImage,
                         track: track,
                         isPlaying: isPlaying,
                         progress: progress,
@@ -172,7 +182,8 @@ class Player extends ConsumerWidget {
                       child: SizedBox(
                         height: maxSize,
                         child: _Expanded(
-                          paletteAsync: paletteAsync,
+                          imageProvider: coverImage,
+                          palette: palette,
                           track: track,
                           isPlaying: isPlaying,
                           position: position,
@@ -197,6 +208,7 @@ class Player extends ConsumerWidget {
 // ── Collapsed ─────────────────────────────────────────────────────────────────
 
 class _Collapsed extends StatelessWidget {
+  final ImageProvider? imageProvider;
   final Track? track;
   final bool isPlaying;
   final double progress;
@@ -205,6 +217,7 @@ class _Collapsed extends StatelessWidget {
   final WidgetRef ref;
 
   const _Collapsed({
+    required this.imageProvider,
     required this.track,
     required this.isPlaying,
     required this.progress,
@@ -228,7 +241,12 @@ class _Collapsed extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                _Cover(track: track, size: 40, colors: colors, ref: ref),
+                _Cover(
+                  imageProvider: imageProvider,
+                  size: 40,
+                  colors: colors,
+                  ref: ref,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -282,10 +300,12 @@ class _Expanded extends StatelessWidget {
   final double progress;
   final PlaybackService service;
   final _PlayerColors colors;
-  final AsyncValue<PaletteGenerator>? paletteAsync;
+  final PaletteGenerator? palette;
   final WidgetRef ref;
+  final ImageProvider? imageProvider;
 
   const _Expanded({
+    required this.imageProvider,
     required this.track,
     required this.isPlaying,
     required this.position,
@@ -293,7 +313,7 @@ class _Expanded extends StatelessWidget {
     required this.progress,
     required this.service,
     required this.colors,
-    this.paletteAsync,
+    required this.palette,
     required this.ref,
   });
 
@@ -311,7 +331,7 @@ class _Expanded extends StatelessWidget {
                 child: Stack(
                   children: [
                     _Cover(
-                      track: track,
+                      imageProvider: imageProvider,
                       size: 300,
                       colors: colors,
                       ref: ref,
@@ -321,7 +341,7 @@ class _Expanded extends StatelessWidget {
                       bottom: 0,
                       left: 0,
                       right: 0,
-                      child: _PaletteDebugOverlay(paletteAsync: paletteAsync!),
+                      child: _PaletteDebugOverlay(palette: palette),
                     ),
                   ],
                 ),
@@ -431,14 +451,14 @@ class _Expanded extends StatelessWidget {
 // ── Shared widgets ────────────────────────────────────────────────────────────
 
 class _Cover extends ConsumerWidget {
-  final Track? track;
+  final ImageProvider? imageProvider;
   final int size;
   final _PlayerColors colors;
   final WidgetRef ref;
   final double rounded;
 
   const _Cover({
-    required this.track,
+    required this.imageProvider,
     required this.size,
     required this.colors,
     required this.ref,
@@ -447,20 +467,13 @@ class _Cover extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (track == null) {
+    if (imageProvider == null) {
       return _placeholder(rounded);
     }
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-    final cover = ref.watch(
-      coverProvider(CoverRequest(track!, size * dpr.ceil())),
-    );
-    return cover.when(
-      data: (img) => ClipRRect(
-        borderRadius: BorderRadius.circular(rounded),
-        child: Image(image: img, fit: BoxFit.cover),
-      ),
-      loading: () => _placeholder(rounded),
-      error: (_, __) => _placeholder(rounded),
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(rounded),
+      child: Image(image: imageProvider!, fit: BoxFit.cover),
     );
   }
 
@@ -534,66 +547,14 @@ class _SkipButton extends StatelessWidget {
 }
 
 class _PaletteDebugOverlay extends StatelessWidget {
-  final AsyncValue<PaletteGenerator> paletteAsync;
+  final PaletteGenerator? palette;
 
-  const _PaletteDebugOverlay({required this.paletteAsync});
+  const _PaletteDebugOverlay({required this.palette});
 
   @override
   Widget build(BuildContext context) {
-    return paletteAsync.when(
-      data: (palette) {
-        final colors = <String, Color?>{
-          'dominant': palette.dominantColor?.color,
-          'vibrant': palette.vibrantColor?.color,
-          'darkVibrant': palette.darkVibrantColor?.color,
-          'lightVibrant': palette.lightVibrantColor?.color,
-          'muted': palette.mutedColor?.color,
-          'darkMuted': palette.darkMutedColor?.color,
-          'lightMuted': palette.lightMutedColor?.color,
-        };
-
-        final entries = colors.entries.where((e) => e.value != null).toList();
-
-        return Container(
-          margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: entries.map((entry) {
-              final color = entry.value!;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white30),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    entry.key,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        );
-      },
-      loading: () => Container(
+    if (palette == null) {
+      return Container(
         margin: const EdgeInsets.all(8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
@@ -604,8 +565,58 @@ class _PaletteDebugOverlay extends StatelessWidget {
           'Loading palette…',
           style: TextStyle(color: Colors.white70, fontSize: 10),
         ),
+      );
+    }
+
+    final colors = <String, Color?>{
+      'dominant': palette!.dominantColor?.color,
+      'vibrant': palette!.vibrantColor?.color,
+      'darkVibrant': palette!.darkVibrantColor?.color,
+      'lightVibrant': palette!.lightVibrantColor?.color,
+      'muted': palette!.mutedColor?.color,
+      'darkMuted': palette!.darkMutedColor?.color,
+      'lightMuted': palette!.lightMutedColor?.color,
+    };
+
+    final entries = colors.entries.where((e) => e.value != null).toList();
+
+    return Container(
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.75),
+        borderRadius: BorderRadius.circular(8),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: entries.map((entry) {
+          final color = entry.value!;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.white30),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                entry.key,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 }
