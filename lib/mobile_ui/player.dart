@@ -110,22 +110,19 @@ class Player extends ConsumerWidget {
     final queue = ref.watch(queueProvider);
     final track = queue[0]?.$1;
     final cover = track != null
-        ? ref.watch(coverProvider(CoverRequest(track, 300)))
+        ? ref.watch(coverProvider(CoverRequest(track, 1000)))
         : const AsyncValue.data(null);
-    final coverImage = cover.maybeWhen(
-      data: (c) => c?.image,
-      orElse: () => null,
-    );
-    final playerColors = cover.maybeWhen(
+    final coverImage = cover.maybeWhen(data: (c) => c, orElse: () => null);
+    final asyncPalette = track != null
+        ? ref.watch(paletteProvider(CoverRequest(track, 1000)))
+        : const AsyncValue.data(null);
+    final playerColors = asyncPalette.maybeWhen(
       data: (c) => c != null
-          ? _PlayerColors.fromPalette(c.palette)
+          ? _PlayerColors.fromPalette(c)
           : _PlayerColors.defaultDark(),
       orElse: () => _PlayerColors.defaultDark(),
     );
-    final palette = cover.maybeWhen(
-      data: (c) => c?.palette,
-      orElse: () => null,
-    );
+    final palette = asyncPalette.maybeWhen(data: (c) => c, orElse: () => null);
 
     final position = ref
         .watch(positionProvider)

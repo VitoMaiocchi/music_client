@@ -21,12 +21,20 @@ final audioSourceProvider = FutureProvider.family<AudioSource, Track>((
   return ref.read(subsonicServiceProvider).getAudioSource(track.id);
 });
 
-final coverProvider = FutureProvider.family<Cover, CoverRequest>((
+final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
   ref,
   req,
 ) async {
   final service = ref.read(subsonicServiceProvider);
   return service.getCover(req.track.coverArt, size: req.size);
+});
+
+final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
+  ref,
+  req,
+) async {
+  final service = ref.read(subsonicServiceProvider);
+  return service.getPalette(req.track.coverArt, size: req.size);
 });
 
 class CoverRequest {
@@ -43,14 +51,6 @@ class CoverRequest {
 
   @override
   int get hashCode => Object.hash(track.coverArt, size);
-}
-
-@immutable
-class Cover {
-  final ImageProvider image;
-  final PaletteGenerator palette;
-
-  const Cover(this.image, this.palette);
 }
 
 class SubsonicService {
@@ -105,8 +105,8 @@ class SubsonicService {
         .toList();
   }
 
-  //FIXME: palette too slow for small images
-  Future<Cover> getCover(String coverArtId, {int? size}) async {
+  //TODO: add caching
+  Future<ImageProvider> getCover(String coverArtId, {int? size}) async {
     final params = <String, String>{
       'id': coverArtId,
       if (size != null) 'size': size.toString(),
@@ -114,11 +114,12 @@ class SubsonicService {
 
     final uri = _buildUri('getCoverArt', params);
     final image = NetworkImage(uri.toString());
-    final palette = PaletteGenerator.fromImageProvider(
-      image,
-      maximumColorCount: 16,
-    );
-    return Cover(image, await palette);
+    return image;
+  }
+
+  Future<PaletteGenerator> getPalette(String coverArtId, {int? size}) async {
+    final image = await getCover(coverArtId, size: size);
+    return PaletteGenerator.fromImageProvider(image, maximumColorCount: 16);
   }
 
   Future<AudioSource> getAudioSource(String trackId) async {

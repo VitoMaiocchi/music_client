@@ -297,12 +297,8 @@ class _CoverArt extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 error: (_, _) => const Icon(Icons.music_note),
-                data: (img) => Image(
-                  image: img.image,
-                  width: 40,
-                  height: 40,
-                  fit: BoxFit.cover,
-                ),
+                data: (img) =>
+                    Image(image: img, width: 40, height: 40, fit: BoxFit.cover),
               );
             },
           ),
