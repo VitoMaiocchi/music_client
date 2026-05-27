@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +27,7 @@ final coverProvider = FutureProvider.family<ImageProvider, CoverRequest>((
   req,
 ) async {
   final service = ref.read(subsonicServiceProvider);
-  return service.getCover(req.track.coverArt, size: req.size);
+  return service.getCover(req);
 });
 
 final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
@@ -34,7 +35,7 @@ final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
   req,
 ) async {
   final service = ref.read(subsonicServiceProvider);
-  return service.getPalette(req.track.coverArt, size: req.size);
+  return service.getPalette(req);
 });
 
 class CoverRequest {
@@ -105,21 +106,28 @@ class SubsonicService {
         .toList();
   }
 
-  //TODO: add caching
-  Future<ImageProvider> getCover(String coverArtId, {int? size}) async {
-    final params = <String, String>{
-      'id': coverArtId,
-      if (size != null) 'size': size.toString(),
-    };
+  final HashMap<CoverRequest, ImageProvider> _coverCache = HashMap();
+  final HashMap<CoverRequest, Future<PaletteGenerator>> _paletteCache =
+      HashMap();
 
-    final uri = _buildUri('getCoverArt', params);
-    final image = NetworkImage(uri.toString());
-    return image;
+  Future<ImageProvider> getCover(CoverRequest req) async {
+    return _coverCache.putIfAbsent(req, () {
+      final params = <String, String>{
+        'id': req.track.coverArt,
+        if (req.size != null) 'size': req.size.toString(),
+      };
+
+      final uri = _buildUri('getCoverArt', params);
+      final image = NetworkImage(uri.toString());
+      return image;
+    });
   }
 
-  Future<PaletteGenerator> getPalette(String coverArtId, {int? size}) async {
-    final image = await getCover(coverArtId, size: size);
-    return PaletteGenerator.fromImageProvider(image, maximumColorCount: 16);
+  Future<PaletteGenerator> getPalette(CoverRequest req) async {
+    return _paletteCache.putIfAbsent(req, () async {
+      final image = await getCover(req);
+      return PaletteGenerator.fromImageProvider(image, maximumColorCount: 16);
+    });
   }
 
   Future<AudioSource> getAudioSource(String trackId) async {
