@@ -89,7 +89,7 @@ class Queue {
       _source = const EmptyTrackList(),
       _queueEntries = [],
       _current = 0,
-      _userQueueEnd = 1;
+      _userQueueEnd = 0;
 
   const Queue._internal(
     this._previousQueue,
@@ -136,12 +136,16 @@ class Queue {
 
   Queue next() {
     if (_current + 1 > _queueEntries.length) return this;
+    final newCurrent = _current + 1;
+    final newUserQueueEnd = _userQueueEnd <= newCurrent
+        ? newCurrent + 1
+        : _userQueueEnd;
     return Queue._internal(
       _previousQueue,
       _source,
       _queueEntries,
-      _current + 1,
-      _userQueueEnd + 1,
+      newCurrent,
+      newUserQueueEnd,
     );
   }
 
@@ -157,7 +161,6 @@ class Queue {
   }
 
   Queue add(Track track) {
-    //FIXME: crashes when _queueEntries is empty since uderQueue end is 1
     final newQueue = List.of(_queueEntries)
       ..insert(_userQueueEnd, _QueueEntry(track, null, const Uuid().v4()));
     return Queue._internal(
