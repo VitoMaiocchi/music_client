@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:music_client/mobile_ui/page.dart';
 import 'package:music_client/mobile_ui/player.dart';
 import 'package:music_client/mobile_ui/queue.dart';
+import 'package:music_client/theme.dart';
 
 class NavigationBar extends StatelessWidget {
   final double maxSize;
@@ -14,8 +15,10 @@ class NavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: maxSize * factor,
-      color: Colors.green,
-      child: const Center(child: Text("Navigation UI")),
+      color: Colors.black,
+      child: const Center(
+        child: Text("Navigation UI", style: AppTextStyles.listTitle),
+      ),
     );
   }
 }

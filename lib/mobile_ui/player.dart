@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
+import 'package:music_client/theme.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 class _PlayerColors {
@@ -124,6 +125,15 @@ class Player extends ConsumerWidget {
     );
     final palette = asyncPalette.maybeWhen(data: (c) => c, orElse: () => null);
 
+    Color? accentColor;
+    if (palette != null) {
+      if (palette.vibrantColor != null) {
+        accentColor = palette.vibrantColor!.color;
+      } else if (palette.dominantColor != null) {
+        accentColor = palette.dominantColor!.color;
+      }
+    }
+
     final position = ref
         .watch(positionProvider)
         .maybeWhen(data: (value) => value, orElse: () => Duration.zero);
@@ -139,14 +149,14 @@ class Player extends ConsumerWidget {
     final service = ref.read(playbackServiceProvider);
 
     final height = minSize + (maxSize - minSize) * factor;
-    final collapsed = (1 - factor * 5).clamp(0.0, 1.0);
-    final expanded = ((factor - 0.2) * 5).clamp(0.0, 1.0);
+    final collapsed = (1 - factor * 20).clamp(0.0, 1.0);
+    final expanded = ((factor - 0.05) * 20).clamp(0.0, 1.0);
     final progress = duration.inMilliseconds > 0
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
 
     return Container(
-      color: playerColors.background,
+      color: AppColors.background,
       child: ClipRect(
         child: SizedBox(
           height: height,
@@ -165,7 +175,7 @@ class Player extends ConsumerWidget {
                         isPlaying: isPlaying,
                         progress: progress,
                         service: service,
-                        colors: playerColors,
+                        accentColor: accentColor,
                         ref: ref,
                       ),
                     ),
@@ -205,81 +215,101 @@ class Player extends ConsumerWidget {
 // ── Collapsed ─────────────────────────────────────────────────────────────────
 
 class _Collapsed extends StatelessWidget {
-  final ImageProvider? imageProvider;
   final Track? track;
+  final ImageProvider? imageProvider;
+  final Color? accentColor;
   final bool isPlaying;
   final double progress;
   final PlaybackService service;
-  final _PlayerColors colors;
   final WidgetRef ref;
 
   const _Collapsed({
-    required this.imageProvider,
     required this.track,
+    required this.imageProvider,
+    required this.accentColor,
     required this.isPlaying,
     required this.progress,
     required this.service,
-    required this.colors,
     required this.ref,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final Color progressColor = accentColor ?? AppColors.progressIndicators;
+
+    final cover = imageProvider != null
+        ? Image(image: imageProvider!, width: 48, height: 48, fit: BoxFit.cover)
+        : Container(
+            width: 48,
+            height: 48,
+            color: AppColors.progressIndicators,
+            child: Icon(Icons.music_note, color: AppColors.textSecondary),
+          );
+
+    return Stack(
       children: [
-        LinearProgressIndicator(
-          value: progress,
-          minHeight: 2,
-          backgroundColor: colors.progressBackground,
-          valueColor: AlwaysStoppedAnimation(colors.progressValue),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
+        //BACKGROUND PROGRESS
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Row(
               children: [
-                _Cover(
-                  imageProvider: imageProvider,
-                  size: 40,
-                  colors: colors,
-                  ref: ref,
+                Container(
+                  color: progressColor,
+                  width: constraints.maxWidth * progress,
+                  height: constraints.maxHeight,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
+                Container(
+                  color: AppColors.surface,
+                  width: constraints.maxWidth * (1 - progress),
+                  height: constraints.maxHeight,
+                ),
+              ],
+            );
+          },
+        ),
+        //COVER + TEXT
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              cover,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        track?.title ?? 'Nothing playing',
-                        style: TextStyle(
-                          color: colors.text,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        track?.title ?? 'Title',
+                        style: AppTextStyles.listTitle,
                         maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        track?.artist ?? '',
-                        style: TextStyle(
-                          color: colors.secondaryText,
-                          fontSize: 12,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        track?.artist ?? 'Artist',
+                        style: AppTextStyles.listSubtitle,
                         maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                _PlayPauseButton(
-                  isPlaying: isPlaying,
-                  service: service,
-                  size: 32,
-                  colors: colors,
+              ),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  iconSize: 32,
+                  icon: Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                  onPressed: () => isPlaying ? service.pause() : service.play(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
