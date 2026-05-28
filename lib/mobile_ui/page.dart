@@ -71,7 +71,7 @@ class AppPage extends StatelessWidget {
 class TrackWidget extends ConsumerWidget {
   final TrackList tracks;
   final int index;
-  static const double _size = 45.0;
+  static const double _size = 48.0;
 
   const TrackWidget({super.key, required this.tracks, required this.index});
 
@@ -120,22 +120,37 @@ class TrackWidget extends ConsumerWidget {
     return SwipeableTile(
       onSwipe: () => ref.read(queueProvider.notifier).add(track),
       color: color,
-      child: ListTile(
-        onTap: () {
-          ref.read(queueProvider.notifier).setSource(tracks, index);
-        },
-        leading: cover,
-        title: Text(
-          track.title,
-          style: AppTextStyles.listTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          track.artist,
-          style: AppTextStyles.listSubtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+      child: InkWell(
+        onTap: () => ref.read(queueProvider.notifier).setSource(tracks, index),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              cover,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.title,
+                        style: AppTextStyles.listTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        track.artist,
+                        style: AppTextStyles.listSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -152,7 +167,9 @@ class StarredTracksPage extends ConsumerWidget {
     return AppPage(
       title: 'Favorites',
       child: tracks.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (tracks) => ListView.builder(
           padding: EdgeInsets.zero,
