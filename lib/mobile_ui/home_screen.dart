@@ -199,9 +199,8 @@ class CurrentPage extends ConsumerWidget {
             final track = tracks[i];
 
             return SwipeableTile(
-              onSwipeLeft: () => ref.read(queueProvider.notifier).add(track),
-              onSwipeRight: () =>
-                  debugPrint('right triggered on ${track.title}'),
+              onSwipe: () => ref.read(queueProvider.notifier).add(track),
+              color: Colors.lime,
               child: Consumer(
                 builder: (context, ref, _) {
                   final cover = ref.watch(

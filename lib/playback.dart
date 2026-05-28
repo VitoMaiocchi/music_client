@@ -157,6 +157,7 @@ class Queue {
   }
 
   Queue add(Track track) {
+    //FIXME: crashes when _queueEntries is empty since uderQueue end is 1
     final newQueue = List.of(_queueEntries)
       ..insert(_userQueueEnd, _QueueEntry(track, null, const Uuid().v4()));
     return Queue._internal(
