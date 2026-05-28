@@ -1,10 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:music_client/backend.dart';
+import 'package:music_client/mobile_ui/page.dart';
 import 'package:music_client/mobile_ui/player.dart';
-import 'package:music_client/playback.dart';
-import 'package:music_client/util.dart';
 import 'package:music_client/mobile_ui/queue.dart';
 
 class NavigationBar extends StatelessWidget {
@@ -34,7 +31,7 @@ class HomeScreenMobile extends StatefulWidget {
     this.snapDuration = const Duration(milliseconds: 160),
     this.miniPlayerHeight = 60,
     this.navigationHeight = 80,
-    this.background = const CurrentPage(),
+    this.background = const StarredTracksPage(),
   });
 
   @override
@@ -175,67 +172,6 @@ class _HomeScreenMobileState extends State<HomeScreenMobile>
           ],
         );
       },
-    );
-  }
-}
-
-class CurrentPage extends ConsumerWidget {
-  const CurrentPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(starredTracksProvider);
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-
-    return Scaffold(
-      // <-- needed, otherwise no background/structure
-      appBar: AppBar(title: const Text('Starred')),
-      body: tracks.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (tracks) => ListView.builder(
-          itemCount: tracks.length,
-          itemBuilder: (context, i) {
-            final track = tracks[i];
-
-            return SwipeableTile(
-              onSwipe: () => ref.read(queueProvider.notifier).add(track),
-              color: Colors.lime,
-              child: Consumer(
-                builder: (context, ref, _) {
-                  final cover = ref.watch(
-                    coverProvider(CoverRequest(track, (40 * dpr).ceil())),
-                  );
-
-                  return ListTile(
-                    onTap: () {
-                      ref
-                          .read(queueProvider.notifier)
-                          .setSource(TrackList(tracks), i);
-                    },
-                    leading: cover.when(
-                      loading: () => const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      error: (_, _) => const Icon(Icons.music_note),
-                      data: (img) => Image(
-                        image: img,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    title: Text(track.title),
-                    subtitle: Text(track.artist),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-      ),
     );
   }
 }
