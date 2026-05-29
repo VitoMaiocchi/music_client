@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,8 +94,7 @@ class _SwipeableTileState extends State<SwipeableTile>
 }
 
 class AlbumArtProvider extends ConsumerStatefulWidget {
-  static const lowResSize = AppSizes.miniAlbumArt;
-  static int highResSize = 1000;
+  static const lowResSizeUnscaled = AppSizes.miniAlbumArt;
 
   final Track? track;
   final bool highRes;
@@ -111,8 +112,6 @@ class AlbumArtProvider extends ConsumerStatefulWidget {
 }
 
 class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
-  bool _highResLoaded = false;
-
   final fallbackCover = Container(color: AppColors.surface);
 
   (Color?, Color?) _extractColors(PaletteGenerator cover) {
@@ -147,30 +146,29 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
+    final lowResSize = (AlbumArtProvider.lowResSizeUnscaled * dpr).ceil();
+    final highResSize = (MediaQuery.of(context).size.width * dpr).ceil();
+
     final coverLow = widget.track != null
         ? ref
-              .watch(
-                coverProvider(
-                  CoverRequest(
-                    widget.track!,
-                    AlbumArtProvider.lowResSize * dpr.ceil(),
-                  ),
-                ),
-              )
+              .watch(coverProvider(CoverRequest(widget.track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
     final paletteLow = widget.track != null
         ? ref
-              .watch(
-                paletteProvider(
-                  CoverRequest(
-                    widget.track!,
-                    AlbumArtProvider.lowResSize * dpr.ceil(),
-                  ),
-                ),
-              )
+              .watch(paletteProvider(CoverRequest(widget.track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
+
+    final lowres = coverLow != null
+        ? Image(
+            image: coverLow,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => fallbackCover,
+            loadingBuilder: (context, child, loadingProgress) =>
+                loadingProgress == null ? child : fallbackCover,
+          )
+        : fallbackCover;
 
     //LOWRES
     if (!widget.highRes) {
@@ -181,29 +179,62 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
         context,
         colors.$1,
         colors.$2,
-        AspectRatio(
-          aspectRatio: 1,
-          child: coverLow != null
-              ? Image(
-                  image: coverLow,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => fallbackCover,
-                  loadingBuilder: (context, child, loadingProgress) =>
-                      loadingProgress == null ? child : fallbackCover,
-                )
-              : fallbackCover,
-        ),
+        AspectRatio(aspectRatio: 1, child: lowres),
       );
     }
 
-    //PLACEHOLDER
-    return widget.builder(
-      context,
-      null,
-      null,
-      coverLow != null
-          ? Image(image: coverLow, fit: BoxFit.cover)
-          : fallbackCover,
+    //HIGHRES
+    final coverHigh = widget.track != null
+        ? ref
+              .watch(coverProvider(CoverRequest(widget.track!, highResSize)))
+              .maybeWhen(data: (c) => c, orElse: () => null)
+        : null;
+    final paletteHigh = widget.track != null
+        ? ref
+              .watch(paletteProvider(CoverRequest(widget.track!, highResSize)))
+              .maybeWhen(data: (c) => c, orElse: () => null)
+        : null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest.shortestSide;
+        final showHighRes = size * dpr.ceil() > lowResSize * 1.2;
+
+        final colors = paletteHigh != null
+            ? _extractColors(paletteHigh)
+            : paletteLow != null
+            ? _extractColors(paletteLow)
+            : (null, null);
+
+        if (!showHighRes) {
+          //return lowrew with highres colors (if available)
+          return widget.builder(
+            context,
+            colors.$1,
+            colors.$2,
+            AspectRatio(aspectRatio: 1, child: lowres),
+          );
+        }
+
+        //return highres
+        return widget.builder(
+          context,
+          colors.$1,
+          colors.$2,
+          AspectRatio(
+            aspectRatio: 1,
+            child: coverHigh != null
+                ? Image(
+                    image: coverHigh,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => lowres,
+                    loadingBuilder: (context, child, loadingProgress) =>
+                        loadingProgress == null ? child : lowres,
+                  )
+                : lowres,
+          ),
+        );
+      },
     );
   }
 }

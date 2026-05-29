@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
+import 'package:music_client/util.dart';
 
 class Player extends ConsumerWidget {
   static const double _transitionThreshold = 0.1;
@@ -21,24 +22,6 @@ class Player extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
     final track = queue[0]?.$1;
-    final cover = track != null
-        ? ref.watch(coverProvider(CoverRequest(track, 1000)))
-        : const AsyncValue.data(null);
-    final coverImage = cover.maybeWhen(data: (c) => c, orElse: () => null);
-    final asyncPalette = track != null
-        ? ref.watch(paletteProvider(CoverRequest(track, 1000)))
-        : const AsyncValue.data(null);
-    final palette = asyncPalette.maybeWhen(data: (c) => c, orElse: () => null);
-
-    Color? accentColor;
-    if (palette != null) {
-      if (palette.vibrantColor != null) {
-        accentColor = palette.vibrantColor!.color;
-      } else if (palette.dominantColor != null) {
-        accentColor = palette.dominantColor!.color;
-      }
-    }
-
     final position = ref
         .watch(positionProvider)
         .maybeWhen(data: (value) => value, orElse: () => Duration.zero);
@@ -52,11 +35,9 @@ class Player extends ConsumerWidget {
         .watch(playerStateProvider)
         .maybeWhen(data: (value) => value.playing, orElse: () => false);
     final service = ref.read(playbackServiceProvider);
-
     final progress = duration.inMilliseconds > 0
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
-
     final height = minSize + (maxSize - minSize) * factor;
     final collapsed = (1 - factor / _transitionThreshold).clamp(0.0, 1.0);
     final expanded = (factor / _transitionThreshold).clamp(0.0, 1.0);
@@ -68,47 +49,53 @@ class Player extends ConsumerWidget {
           height: height,
           child: Align(
             alignment: Alignment.topCenter,
-            child: Stack(
-              children: [
-                if (collapsed > 0)
-                  Opacity(
-                    opacity: collapsed,
-                    child: SizedBox(
-                      height: minSize,
-                      child: _Collapsed(
-                        imageProvider: coverImage,
-                        track: track,
-                        isPlaying: isPlaying,
-                        progress: progress,
-                        service: service,
-                        accentColor: accentColor,
-                        ref: ref,
-                      ),
-                    ),
-                  ),
-                if (expanded > 0)
-                  Opacity(
-                    opacity: expanded,
-                    child: OverflowBox(
-                      maxHeight: maxSize,
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(
-                        height: maxSize,
-                        child: _Expanded(
-                          imageProvider: coverImage,
-                          track: track,
-                          isPlaying: isPlaying,
-                          position: position,
-                          duration: duration,
-                          progress: progress,
-                          service: service,
-                          accentColor: accentColor,
-                          ref: ref,
+            child: AlbumArtProvider(
+              track: track,
+              highRes: true,
+              builder: (context, primaryColor, secondaryColor, cover) {
+                return Stack(
+                  children: [
+                    if (collapsed > 0)
+                      Opacity(
+                        opacity: collapsed,
+                        child: SizedBox(
+                          height: minSize,
+                          child: _Collapsed(
+                            cover: cover,
+                            track: track,
+                            isPlaying: isPlaying,
+                            progress: progress,
+                            service: service,
+                            accentColor: primaryColor,
+                            ref: ref,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                    if (expanded > 0)
+                      Opacity(
+                        opacity: expanded,
+                        child: OverflowBox(
+                          maxHeight: maxSize,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            height: maxSize,
+                            child: _Expanded(
+                              cover: cover,
+                              track: track,
+                              isPlaying: isPlaying,
+                              position: position,
+                              duration: duration,
+                              progress: progress,
+                              service: service,
+                              accentColor: primaryColor,
+                              ref: ref,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -119,7 +106,7 @@ class Player extends ConsumerWidget {
 
 class _Collapsed extends StatelessWidget {
   final Track? track;
-  final ImageProvider? imageProvider;
+  final Widget cover;
   final Color? accentColor;
   final bool isPlaying;
   final double progress;
@@ -128,7 +115,7 @@ class _Collapsed extends StatelessWidget {
 
   const _Collapsed({
     required this.track,
-    required this.imageProvider,
+    required this.cover,
     required this.accentColor,
     required this.isPlaying,
     required this.progress,
@@ -139,15 +126,6 @@ class _Collapsed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color progressColor = accentColor ?? AppColors.progressIndicators;
-
-    final cover = imageProvider != null
-        ? Image(image: imageProvider!, width: 48, height: 48, fit: BoxFit.cover)
-        : Container(
-            width: 48,
-            height: 48,
-            color: AppColors.progressIndicators,
-            child: Icon(Icons.music_note, color: AppColors.textSecondary),
-          );
 
     return Stack(
       children: [
@@ -175,7 +153,7 @@ class _Collapsed extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
-              cover,
+              SizedBox(width: 48, height: 48, child: cover),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 8),
@@ -222,7 +200,7 @@ class _Collapsed extends StatelessWidget {
 
 class _Expanded extends StatelessWidget {
   final Track? track;
-  final ImageProvider? imageProvider;
+  final Widget cover;
   final Color? accentColor;
   final bool isPlaying;
   final PlaybackService service;
@@ -232,7 +210,7 @@ class _Expanded extends StatelessWidget {
   final WidgetRef ref;
 
   const _Expanded({
-    required this.imageProvider,
+    required this.cover,
     required this.track,
     required this.isPlaying,
     required this.position,
@@ -246,30 +224,6 @@ class _Expanded extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).viewPadding.top;
-
-    final fallbackCover = AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        color: AppColors.progressIndicators,
-        child: Center(
-          child: const Icon(
-            Icons.music_note,
-            color: AppColors.textSecondary,
-            size: 150,
-          ),
-        ),
-      ),
-    );
-
-    final cover = imageProvider != null
-        ? Image(
-            image: imageProvider!,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) =>
-                loadingProgress == null ? child : fallbackCover,
-            errorBuilder: (context, error, stackTrace) => fallbackCover,
-          )
-        : fallbackCover;
 
     return Stack(
       fit: StackFit.expand,
