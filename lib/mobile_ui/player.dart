@@ -247,14 +247,29 @@ class _Expanded extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).viewPadding.top;
 
+    final fallbackCover = AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        color: AppColors.progressIndicators,
+        child: Center(
+          child: const Icon(
+            Icons.music_note,
+            color: AppColors.textSecondary,
+            size: 150,
+          ),
+        ),
+      ),
+    );
+
     final cover = imageProvider != null
-        ? Image(image: imageProvider!, fit: BoxFit.cover)
-        : Container(
-            width: 48,
-            height: 48,
-            color: AppColors.progressIndicators,
-            child: Icon(Icons.music_note, color: AppColors.textSecondary),
-          );
+        ? Image(
+            image: imageProvider!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) =>
+                loadingProgress == null ? child : fallbackCover,
+            errorBuilder: (context, error, stackTrace) => fallbackCover,
+          )
+        : fallbackCover;
 
     return Stack(
       fit: StackFit.expand,
@@ -348,40 +363,40 @@ class _Expanded extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      iconSize: 32,
-                      icon: Icon(Icons.skip_previous, color: Colors.white),
-                      onPressed: () =>
-                          ref.read(queueProvider.notifier).previous(),
-                    ),
+                  IconButton(
+                    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 8),
+                    iconSize: 56,
+                    icon: Icon(Icons.skip_previous, color: Colors.white),
+                    onPressed: () =>
+                        ref.read(queueProvider.notifier).previous(),
                   ),
                   SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      iconSize: 32,
-                      icon: Icon(
-                        isPlaying ? Icons.pause : Icons.play_arrow,
-                        color: Colors.white,
+                    width: 76,
+                    height: 76,
+                    child: CustomPaint(
+                      painter: _AntiAliasedCirclePainter(),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () =>
+                              isPlaying ? service.pause() : service.play(),
+                          child: Center(
+                            child: Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.black,
+                              size: 56,
+                            ),
+                          ),
+                        ),
                       ),
-                      onPressed: () =>
-                          isPlaying ? service.pause() : service.play(),
                     ),
                   ),
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      iconSize: 32,
-                      icon: Icon(Icons.skip_next, color: Colors.white),
-                      onPressed: () => ref.read(queueProvider.notifier).next(),
-                    ),
+                  IconButton(
+                    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 8),
+                    iconSize: 56,
+                    icon: Icon(Icons.skip_next, color: Colors.white),
+                    onPressed: () => ref.read(queueProvider.notifier).next(),
                   ),
                 ],
               ),
@@ -397,4 +412,33 @@ class _Expanded extends StatelessWidget {
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
+}
+
+class _AntiAliasedCirclePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white
+        ..isAntiAlias = true,
+    );
+
+    // anti-aliasing
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white
+        ..isAntiAlias = true
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.5),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

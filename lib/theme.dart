@@ -38,3 +38,7 @@ abstract final class AppTextStyles {
     color: AppColors.textSecondary,
   );
 }
+
+abstract final class AppSizes {
+  static const double miniAlbumArt = 48;
+}
