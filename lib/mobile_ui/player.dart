@@ -5,6 +5,7 @@ import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 
 class Player extends ConsumerWidget {
+  static const double _transitionThreshold = 0.1;
   final double minSize;
   final double maxSize;
   final double factor;
@@ -52,12 +53,13 @@ class Player extends ConsumerWidget {
         .maybeWhen(data: (value) => value.playing, orElse: () => false);
     final service = ref.read(playbackServiceProvider);
 
-    final height = minSize + (maxSize - minSize) * factor;
-    final collapsed = (1 - factor * 20).clamp(0.0, 1.0);
-    final expanded = ((factor - 0.05) * 20).clamp(0.0, 1.0);
     final progress = duration.inMilliseconds > 0
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
+
+    final height = minSize + (maxSize - minSize) * factor;
+    final collapsed = (1 - factor / _transitionThreshold).clamp(0.0, 1.0);
+    final expanded = (factor / _transitionThreshold).clamp(0.0, 1.0);
 
     return Container(
       color: AppColors.background,
