@@ -216,6 +216,11 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
           );
         }
 
+        final blurredLowres = ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: lowres,
+        );
+
         //return highres
         return widget.builder(
           context,
@@ -227,11 +232,11 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
                 ? Image(
                     image: coverHigh,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => lowres,
+                    errorBuilder: (_, _, _) => blurredLowres,
                     loadingBuilder: (context, child, loadingProgress) =>
-                        loadingProgress == null ? child : lowres,
+                        loadingProgress == null ? child : blurredLowres,
                   )
-                : lowres,
+                : blurredLowres,
           ),
         );
       },
