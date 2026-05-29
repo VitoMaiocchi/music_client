@@ -28,4 +28,13 @@ abstract final class AppTextStyles {
     fontSize: 13,
     color: AppColors.textSecondary,
   );
+  static const playerTitle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+  static const playerSubtitle = TextStyle(
+    fontSize: 14,
+    color: AppColors.textSecondary,
+  );
 }

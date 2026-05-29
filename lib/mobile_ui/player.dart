@@ -3,96 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
-import 'package:palette_generator/palette_generator.dart';
-
-class _PlayerColors {
-  final Color background;
-  final Color surface;
-  final Color primary;
-  final Color onPrimary;
-  final Color text;
-  final Color secondaryText;
-  final Color progressBackground;
-  final Color progressValue;
-  final Color sliderActive;
-  final Color sliderInactive;
-  final Color playButtonBg;
-  final Color playButtonIcon;
-  final Color placeholderBg;
-  final Color placeholderIcon;
-
-  _PlayerColors({
-    required this.background,
-    required this.surface,
-    required this.primary,
-    required this.onPrimary,
-    required this.text,
-    required this.secondaryText,
-    required this.progressBackground,
-    required this.progressValue,
-    required this.sliderActive,
-    required this.sliderInactive,
-    required this.playButtonBg,
-    required this.playButtonIcon,
-    required this.placeholderBg,
-    required this.placeholderIcon,
-  });
-
-  factory _PlayerColors.defaultDark() {
-    return _PlayerColors(
-      background: const Color(0xFF111111),
-      surface: const Color(0xFF111111),
-      primary: const Color(0xFFE8E0D0),
-      onPrimary: const Color(0xFF111111),
-      text: const Color(0xFFE8E0D0),
-      secondaryText: const Color(0xFF888880),
-      progressBackground: const Color(0xFF2A2A2A),
-      progressValue: const Color(0xFFE8E0D0),
-      sliderActive: const Color(0xFFE8E0D0),
-      sliderInactive: const Color(0xFF2A2A2A),
-      playButtonBg: const Color(0xFFE8E0D0),
-      playButtonIcon: const Color(0xFF111111),
-      placeholderBg: const Color(0xFF2A2A2A),
-      placeholderIcon: const Color(0xFF555550),
-    );
-  }
-
-  factory _PlayerColors.fromPalette(PaletteGenerator palette) {
-    final defaultColors = _PlayerColors.defaultDark();
-
-    final dominant = palette.dominantColor?.color ?? defaultColors.background;
-    final vibrant = palette.vibrantColor?.color ?? defaultColors.primary;
-    final muted = palette.mutedColor?.color ?? defaultColors.progressBackground;
-
-    Color onVibrant;
-    if (vibrant.computeLuminance() > 0.5) {
-      onVibrant = Colors.black;
-    } else {
-      onVibrant = Colors.white;
-    }
-
-    final isDominantDark = dominant.computeLuminance() < 0.5;
-    final textColor = isDominantDark ? Colors.white : Colors.black;
-    final secondaryTextColor = isDominantDark ? Colors.white70 : Colors.black54;
-
-    return _PlayerColors(
-      background: dominant,
-      surface: dominant,
-      primary: vibrant,
-      onPrimary: onVibrant,
-      text: textColor,
-      secondaryText: secondaryTextColor,
-      progressBackground: muted,
-      progressValue: vibrant,
-      sliderActive: vibrant,
-      sliderInactive: muted,
-      playButtonBg: vibrant,
-      playButtonIcon: onVibrant,
-      placeholderBg: muted,
-      placeholderIcon: isDominantDark ? Colors.white38 : Colors.black38,
-    );
-  }
-}
 
 class Player extends ConsumerWidget {
   final double minSize;
@@ -117,12 +27,6 @@ class Player extends ConsumerWidget {
     final asyncPalette = track != null
         ? ref.watch(paletteProvider(CoverRequest(track, 1000)))
         : const AsyncValue.data(null);
-    final playerColors = asyncPalette.maybeWhen(
-      data: (c) => c != null
-          ? _PlayerColors.fromPalette(c)
-          : _PlayerColors.defaultDark(),
-      orElse: () => _PlayerColors.defaultDark(),
-    );
     final palette = asyncPalette.maybeWhen(data: (c) => c, orElse: () => null);
 
     Color? accentColor;
@@ -190,14 +94,13 @@ class Player extends ConsumerWidget {
                         height: maxSize,
                         child: _Expanded(
                           imageProvider: coverImage,
-                          palette: palette,
                           track: track,
                           isPlaying: isPlaying,
                           position: position,
                           duration: duration,
                           progress: progress,
                           service: service,
-                          colors: playerColors,
+                          accentColor: accentColor,
                           ref: ref,
                         ),
                       ),
@@ -211,8 +114,6 @@ class Player extends ConsumerWidget {
     );
   }
 }
-
-// ── Collapsed ─────────────────────────────────────────────────────────────────
 
 class _Collapsed extends StatelessWidget {
   final Track? track;
@@ -317,19 +218,16 @@ class _Collapsed extends StatelessWidget {
   }
 }
 
-// ── Expanded ──────────────────────────────────────────────────────────────────
-
 class _Expanded extends StatelessWidget {
   final Track? track;
+  final ImageProvider? imageProvider;
+  final Color? accentColor;
   final bool isPlaying;
+  final PlaybackService service;
   final Duration position;
   final Duration duration;
   final double progress;
-  final PlaybackService service;
-  final _PlayerColors colors;
-  final PaletteGenerator? palette;
   final WidgetRef ref;
-  final ImageProvider? imageProvider;
 
   const _Expanded({
     required this.imageProvider,
@@ -339,132 +237,156 @@ class _Expanded extends StatelessWidget {
     required this.duration,
     required this.progress,
     required this.service,
-    required this.colors,
-    required this.palette,
     required this.ref,
+    required this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-      child: Column(
-        children: [
-          // Cover with optional debug overlay
-          Expanded(
-            child: Center(
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Stack(
+    final topInset = MediaQuery.of(context).viewPadding.top;
+
+    final cover = imageProvider != null
+        ? Image(image: imageProvider!, fit: BoxFit.cover)
+        : Container(
+            width: 48,
+            height: 48,
+            color: AppColors.progressIndicators,
+            child: Icon(Icons.music_note, color: AppColors.textSecondary),
+          );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // BACKGROUND
+        if (accentColor != null)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  accentColor!,
+                  Color.lerp(accentColor!, AppColors.background, 0.15)!,
+                  Color.lerp(accentColor!, AppColors.background, 0.4)!,
+                  AppColors.background,
+                ],
+                stops: [0.0, 0.2, 0.35, 1.0],
+              ),
+            ),
+          )
+        else
+          Container(color: AppColors.background),
+        //CONTENT
+        Padding(
+          padding: EdgeInsets.only(top: topInset),
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(24.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: cover,
+                ),
+              ),
+              // Title + artist
+              Text(
+                track?.title ?? 'Nothing playing',
+                style: AppTextStyles.playerTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                track?.artist ?? '',
+                style: AppTextStyles.playerSubtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 20),
+
+              // Seek bar
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 14,
+                  ),
+                  activeTrackColor: accentColor ?? AppColors.textPrimary,
+                  inactiveTrackColor: AppColors.progressIndicators,
+                  thumbColor: AppColors.textPrimary,
+                  overlayColor: AppColors.textPrimary,
+                ),
+                child: Slider(
+                  value: progress.clamp(0.0, 1.0),
+                  onChanged: (v) {
+                    final ms = (v * duration.inMilliseconds).toInt();
+                    service.player.seek(Duration(milliseconds: ms));
+                  },
+                ),
+              ),
+
+              // Time labels
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _Cover(
-                      imageProvider: imageProvider,
-                      size: 300,
-                      colors: colors,
-                      ref: ref,
-                      rounded: 12,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: _PaletteDebugOverlay(palette: palette),
-                    ),
+                    Text(_fmt(position), style: AppTextStyles.listSubtitle),
+                    Text(_fmt(duration), style: AppTextStyles.listSubtitle),
                   ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-          // Title + artist
-          Text(
-            track?.title ?? 'Nothing playing',
-            style: TextStyle(
-              color: colors.text,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            track?.artist ?? '',
-            style: TextStyle(color: colors.secondaryText, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 20),
-
-          // Seek bar
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              activeTrackColor: colors.sliderActive,
-              inactiveTrackColor: colors.sliderInactive,
-              thumbColor: colors.sliderActive,
-              overlayColor: colors.sliderActive.withOpacity(0.2),
-            ),
-            child: Slider(
-              value: progress.clamp(0.0, 1.0),
-              onChanged: (v) {
-                final ms = (v * duration.inMilliseconds).toInt();
-                service.player.seek(Duration(milliseconds: ms));
-              },
-            ),
-          ),
-
-          // Time labels
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _fmt(position),
-                  style: TextStyle(color: colors.secondaryText, fontSize: 12),
-                ),
-                Text(
-                  _fmt(duration),
-                  style: TextStyle(color: colors.secondaryText, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Previous | Play/Pause | Next
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _SkipButton(
-                icon: Icons.skip_previous_rounded,
-                colors: colors,
-                onTap: () => ref.read(queueProvider.notifier).previous(),
-                size: 44,
-              ),
-              const SizedBox(width: 24),
-              _PlayPauseButton(
-                isPlaying: isPlaying,
-                service: service,
-                size: 56,
-                colors: colors,
-              ),
-              const SizedBox(width: 24),
-              _SkipButton(
-                icon: Icons.skip_next_rounded,
-                colors: colors,
-                onTap: () => ref.read(queueProvider.notifier).next(),
-                size: 44,
+              // Previous | Play/Pause | Next
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 32,
+                      icon: Icon(Icons.skip_previous, color: Colors.white),
+                      onPressed: () =>
+                          ref.read(queueProvider.notifier).previous(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 32,
+                      icon: Icon(
+                        isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: Colors.white,
+                      ),
+                      onPressed: () =>
+                          isPlaying ? service.pause() : service.play(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 32,
+                      icon: Icon(Icons.skip_next, color: Colors.white),
+                      onPressed: () => ref.read(queueProvider.notifier).next(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -472,178 +394,5 @@ class _Expanded extends StatelessWidget {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
-  }
-}
-
-// ── Shared widgets ────────────────────────────────────────────────────────────
-
-class _Cover extends ConsumerWidget {
-  final ImageProvider? imageProvider;
-  final int size;
-  final _PlayerColors colors;
-  final WidgetRef ref;
-  final double rounded;
-
-  const _Cover({
-    required this.imageProvider,
-    required this.size,
-    required this.colors,
-    required this.ref,
-    this.rounded = 6,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (imageProvider == null) {
-      return _placeholder(rounded);
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(rounded),
-      child: Image(image: imageProvider!, fit: BoxFit.cover),
-    );
-  }
-
-  Widget _placeholder(double r) => ClipRRect(
-    borderRadius: BorderRadius.circular(r),
-    child: Container(
-      color: colors.placeholderBg,
-      child: Icon(Icons.music_note, color: colors.placeholderIcon),
-    ),
-  );
-}
-
-class _PlayPauseButton extends StatelessWidget {
-  final bool isPlaying;
-  final PlaybackService service;
-  final double size;
-  final _PlayerColors colors;
-
-  const _PlayPauseButton({
-    required this.isPlaying,
-    required this.service,
-    required this.size,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isPlaying ? service.pause : service.play,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: colors.playButtonBg,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-          color: colors.playButtonIcon,
-          size: size * 0.55,
-        ),
-      ),
-    );
-  }
-}
-
-class _SkipButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final _PlayerColors colors;
-  final double size;
-
-  const _SkipButton({
-    required this.icon,
-    required this.onTap,
-    required this.colors,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Icon(icon, color: colors.text, size: size * 0.6),
-      ),
-    );
-  }
-}
-
-class _PaletteDebugOverlay extends StatelessWidget {
-  final PaletteGenerator? palette;
-
-  const _PaletteDebugOverlay({required this.palette});
-
-  @override
-  Widget build(BuildContext context) {
-    if (palette == null) {
-      return Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.75),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Loading palette…',
-          style: TextStyle(color: Colors.white70, fontSize: 10),
-        ),
-      );
-    }
-
-    final colors = <String, Color?>{
-      'dominant': palette!.dominantColor?.color,
-      'vibrant': palette!.vibrantColor?.color,
-      'darkVibrant': palette!.darkVibrantColor?.color,
-      'lightVibrant': palette!.lightVibrantColor?.color,
-      'muted': palette!.mutedColor?.color,
-      'darkMuted': palette!.darkMutedColor?.color,
-      'lightMuted': palette!.lightMutedColor?.color,
-    };
-
-    final entries = colors.entries.where((e) => e.value != null).toList();
-
-    return Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: entries.map((entry) {
-          final color = entry.value!;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.white30),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                entry.key,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
   }
 }
