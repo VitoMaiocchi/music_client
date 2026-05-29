@@ -71,88 +71,61 @@ class AppPage extends StatelessWidget {
 class TrackWidget extends ConsumerWidget {
   final TrackList tracks;
   final int index;
-  static const double _size = 48.0;
+  static const int _size = AppSizes.miniAlbumArt;
 
   const TrackWidget({super.key, required this.tracks, required this.index});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = tracks.tracks[index];
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-    final coverRequest = CoverRequest(track, (_size * dpr).ceil());
-    final cover = ref
-        .watch(coverProvider(coverRequest))
-        .when(
-          data: (img) =>
-              Image(image: img, width: _size, height: _size, fit: BoxFit.cover),
-          error: (_, _) => const Icon(Icons.music_note),
-          loading: () => const SizedBox(
-            width: _size,
-            height: _size,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.progressIndicators,
+
+    return AlbumArtProvider(
+      track: track,
+      highRes: false,
+      builder: (context, color1, color2, cover) {
+        return SwipeableTile(
+          onSwipe: () => ref.read(queueProvider.notifier).add(track),
+          color: color1 ?? AppColors.accentFallback,
+          child: InkWell(
+            onTap: () =>
+                ref.read(queueProvider.notifier).setSource(tracks, index),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: _size.toDouble(),
+                    height: _size.toDouble(),
+                    child: cover,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            track.title,
+                            style: AppTextStyles.listTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            track.artist,
+                            style: AppTextStyles.listSubtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
-    final color = ref
-        .watch(paletteProvider(coverRequest))
-        .maybeWhen(
-          data: (palette) {
-            if (palette.dominantColor != null) {
-              return palette.dominantColor!.color;
-            }
-            if (palette.vibrantColor != null) {
-              return palette.vibrantColor!.color;
-            }
-            if (palette.lightVibrantColor != null) {
-              return palette.lightVibrantColor!.color;
-            }
-            if (palette.lightMutedColor != null) {
-              return palette.lightMutedColor!.color;
-            }
-
-            return AppColors.accentFallback;
-          },
-          orElse: () => AppColors.accentFallback,
-        );
-
-    return SwipeableTile(
-      onSwipe: () => ref.read(queueProvider.notifier).add(track),
-      color: color,
-      child: InkWell(
-        onTap: () => ref.read(queueProvider.notifier).setSource(tracks, index),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            children: [
-              cover,
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        track.title,
-                        style: AppTextStyles.listTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        track.artist,
-                        style: AppTextStyles.listSubtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      },
     );
   }
 }

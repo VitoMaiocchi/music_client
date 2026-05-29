@@ -40,5 +40,5 @@ abstract final class AppTextStyles {
 }
 
 abstract final class AppSizes {
-  static const double miniAlbumArt = 48;
+  static const int miniAlbumArt = 48;
 }
