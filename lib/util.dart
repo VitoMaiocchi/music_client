@@ -93,26 +93,21 @@ class _SwipeableTileState extends State<SwipeableTile>
   }
 }
 
-class AlbumArtProvider extends ConsumerStatefulWidget {
+class AlbumArtProvider extends ConsumerWidget {
   static const lowResSizeUnscaled = AppSizes.miniAlbumArt;
 
   final Track? track;
   final bool highRes;
   final Widget Function(BuildContext, Color?, Color?, Widget) builder;
 
-  const AlbumArtProvider({
+  AlbumArtProvider({
     super.key,
     required this.track,
     required this.builder,
     this.highRes = false,
   });
 
-  @override
-  ConsumerState<AlbumArtProvider> createState() => _AlbumArtProviderState();
-}
-
-class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
-  final fallbackCover = Container(color: AppColors.surface);
+  final _fallbackCover = Container(color: AppColors.surface);
 
   (Color?, Color?) _extractColors(PaletteGenerator cover) {
     Color primary;
@@ -144,19 +139,19 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final lowResSize = (AlbumArtProvider.lowResSizeUnscaled * dpr).ceil();
     final highResSize = (MediaQuery.of(context).size.width * dpr).ceil();
 
-    final coverLow = widget.track != null
+    final coverLow = track != null
         ? ref
-              .watch(coverProvider(CoverRequest(widget.track!, lowResSize)))
+              .watch(coverProvider(CoverRequest(track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
-    final paletteLow = widget.track != null
+    final paletteLow = track != null
         ? ref
-              .watch(paletteProvider(CoverRequest(widget.track!, lowResSize)))
+              .watch(paletteProvider(CoverRequest(track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
 
@@ -164,18 +159,18 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
         ? Image(
             image: coverLow,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => fallbackCover,
+            errorBuilder: (_, _, _) => _fallbackCover,
             loadingBuilder: (context, child, loadingProgress) =>
-                loadingProgress == null ? child : fallbackCover,
+                loadingProgress == null ? child : _fallbackCover,
           )
-        : fallbackCover;
+        : _fallbackCover;
 
     //LOWRES
-    if (!widget.highRes) {
+    if (!highRes) {
       final colors = paletteLow != null
           ? _extractColors(paletteLow)
           : (null, null);
-      return widget.builder(
+      return builder(
         context,
         colors.$1,
         colors.$2,
@@ -184,14 +179,14 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
     }
 
     //HIGHRES
-    final coverHigh = widget.track != null
+    final coverHigh = track != null
         ? ref
-              .watch(coverProvider(CoverRequest(widget.track!, highResSize)))
+              .watch(coverProvider(CoverRequest(track!, highResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
-    final paletteHigh = widget.track != null
+    final paletteHigh = track != null
         ? ref
-              .watch(paletteProvider(CoverRequest(widget.track!, highResSize)))
+              .watch(paletteProvider(CoverRequest(track!, highResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
 
@@ -208,7 +203,7 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
 
         if (!showHighRes) {
           //return lowrew with highres colors (if available)
-          return widget.builder(
+          return builder(
             context,
             colors.$1,
             colors.$2,
@@ -222,7 +217,7 @@ class _AlbumArtProviderState extends ConsumerState<AlbumArtProvider> {
         );
 
         //return highres
-        return widget.builder(
+        return builder(
           context,
           colors.$1,
           colors.$2,
