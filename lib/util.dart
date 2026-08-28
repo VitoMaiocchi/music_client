@@ -212,23 +212,25 @@ class AlbumArtProvider extends ConsumerWidget {
           colors.$2,
           AspectRatio(
             aspectRatio: 1,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              layoutBuilder: (current, previous) => Stack(
-                fit: StackFit.expand,
-                children: [...previous, ?current],
-              ),
-              child: Image(
-                key: ValueKey(coverHigh),
-                image: boundedHighRes,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                frameBuilder: (context, child, frame, wasSyncLoaded) {
-                  if (wasSyncLoaded || frame != null) return child;
-                  return blurredLowres;
-                },
-                errorBuilder: (_, _, _) => blurredLowres,
-              ),
+            child: Image(
+              image: boundedHighRes,
+              fit: BoxFit.cover,
+              frameBuilder: (context, child, frame, wasSyncLoaded) {
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 120),
+                  layoutBuilder: (current, previous) => Stack(
+                    fit: StackFit.expand,
+                    children: [...previous, ?current],
+                  ),
+                  child: frame == null && !wasSyncLoaded
+                      ? KeyedSubtree(
+                          key: const ValueKey('low'),
+                          child: blurredLowres,
+                        )
+                      : KeyedSubtree(key: const ValueKey('high'), child: child),
+                );
+              },
+              errorBuilder: (_, _, _) => blurredLowres,
             ),
           ),
         );
