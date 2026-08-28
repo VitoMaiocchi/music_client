@@ -195,6 +195,17 @@ class AlbumArtProvider extends ConsumerWidget {
           height: targetPx,
         );
 
+        final blurredLowres = ClipRect(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: 15,
+              sigmaY: 15,
+              tileMode: TileMode.mirror,
+            ),
+            child: lowres,
+          ),
+        );
+
         return builder(
           context,
           colors.$1,
@@ -214,9 +225,9 @@ class AlbumArtProvider extends ConsumerWidget {
                 gaplessPlayback: true,
                 frameBuilder: (context, child, frame, wasSyncLoaded) {
                   if (wasSyncLoaded || frame != null) return child;
-                  return lowres;
+                  return blurredLowres;
                 },
-                errorBuilder: (_, _, _) => lowres,
+                errorBuilder: (_, _, _) => blurredLowres,
               ),
             ),
           ),
