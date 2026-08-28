@@ -100,40 +100,29 @@ class AlbumArtProvider extends ConsumerWidget {
   final bool highRes;
   final Widget Function(BuildContext, Color?, Color?, Widget) builder;
 
-  AlbumArtProvider({
+  const AlbumArtProvider({
     super.key,
     required this.track,
     required this.builder,
     this.highRes = false,
   });
 
-  final _fallbackCover = Container(color: AppColors.surface);
+  static final _fallbackCover = Container(color: AppColors.surface);
 
   (Color?, Color?) _extractColors(PaletteGenerator cover) {
-    Color primary;
-    if (cover.vibrantColor != null) {
-      primary = cover.vibrantColor!.color;
-    } else if (cover.dominantColor != null) {
-      primary = cover.dominantColor!.color;
-    } else if (cover.lightVibrantColor != null) {
-      primary = cover.lightVibrantColor!.color;
-    } else if (cover.darkVibrantColor != null) {
-      primary = cover.darkVibrantColor!.color;
-    } else {
-      primary = AppColors.textPrimary;
-    }
-    Color secondary;
-    if (cover.darkMutedColor != null) {
-      secondary = cover.darkMutedColor!.color;
-    } else if (cover.mutedColor != null) {
-      secondary = cover.mutedColor!.color;
-    } else if (cover.lightMutedColor != null) {
-      secondary = cover.lightMutedColor!.color;
-    } else if (cover.dominantColor != null) {
-      secondary = cover.dominantColor!.color;
-    } else {
-      secondary = AppColors.progressIndicators;
-    }
+    Color primary =
+        cover.vibrantColor?.color ??
+        cover.dominantColor?.color ??
+        cover.lightVibrantColor?.color ??
+        cover.darkVibrantColor?.color ??
+        AppColors.textPrimary;
+
+    Color secondary =
+        cover.darkMutedColor?.color ??
+        cover.mutedColor?.color ??
+        cover.lightMutedColor?.color ??
+        cover.dominantColor?.color ??
+        AppColors.progressIndicators;
 
     return (primary, secondary);
   }
@@ -141,7 +130,7 @@ class AlbumArtProvider extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final lowResSize = (AlbumArtProvider.lowResSizeUnscaled * dpr).ceil();
+    final lowResSize = (lowResSizeUnscaled * dpr).ceil();
     final highResSize = (MediaQuery.of(context).size.width * dpr).ceil();
 
     final coverLow = track != null
@@ -149,27 +138,28 @@ class AlbumArtProvider extends ConsumerWidget {
               .watch(coverProvider(CoverRequest(track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
+
     final paletteLow = track != null
         ? ref
               .watch(paletteProvider(CoverRequest(track!, lowResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
 
+    final colors = paletteLow != null
+        ? _extractColors(paletteLow)
+        : (null, null);
+
     final lowres = coverLow != null
         ? Image(
+            key: const ValueKey('lowres'),
             image: coverLow,
             fit: BoxFit.cover,
+            gaplessPlayback: true,
             errorBuilder: (_, _, _) => _fallbackCover,
-            loadingBuilder: (context, child, loadingProgress) =>
-                loadingProgress == null ? child : _fallbackCover,
           )
         : _fallbackCover;
 
-    //LOWRES
     if (!highRes) {
-      final colors = paletteLow != null
-          ? _extractColors(paletteLow)
-          : (null, null);
       return builder(
         context,
         colors.$1,
@@ -178,31 +168,19 @@ class AlbumArtProvider extends ConsumerWidget {
       );
     }
 
-    //HIGHRES
     final coverHigh = track != null
         ? ref
               .watch(coverProvider(CoverRequest(track!, highResSize)))
-              .maybeWhen(data: (c) => c, orElse: () => null)
-        : null;
-    final paletteHigh = track != null
-        ? ref
-              .watch(paletteProvider(CoverRequest(track!, highResSize)))
               .maybeWhen(data: (c) => c, orElse: () => null)
         : null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest.shortestSide;
-        final showHighRes = size * dpr.ceil() > lowResSize * 1.2;
+        final showHighRes = size * dpr > lowResSize * 1.2;
+        final targetPx = (size * dpr).ceil();
 
-        final colors = paletteHigh != null
-            ? _extractColors(paletteHigh)
-            : paletteLow != null
-            ? _extractColors(paletteLow)
-            : (null, null);
-
-        if (!showHighRes) {
-          //return lowrew with highres colors (if available)
+        if (!showHighRes || coverHigh == null) {
           return builder(
             context,
             colors.$1,
@@ -211,27 +189,36 @@ class AlbumArtProvider extends ConsumerWidget {
           );
         }
 
-        final blurredLowres = ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: lowres,
+        final boundedHighRes = ResizeImage(
+          coverHigh,
+          width: targetPx,
+          height: targetPx,
         );
 
-        //return highres
         return builder(
           context,
           colors.$1,
           colors.$2,
           AspectRatio(
             aspectRatio: 1,
-            child: coverHigh != null
-                ? Image(
-                    image: coverHigh,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => blurredLowres,
-                    loadingBuilder: (context, child, loadingProgress) =>
-                        loadingProgress == null ? child : blurredLowres,
-                  )
-                : blurredLowres,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              layoutBuilder: (current, previous) => Stack(
+                fit: StackFit.expand,
+                children: [...previous, ?current],
+              ),
+              child: Image(
+                key: ValueKey(coverHigh),
+                image: boundedHighRes,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                frameBuilder: (context, child, frame, wasSyncLoaded) {
+                  if (wasSyncLoaded || frame != null) return child;
+                  return lowres;
+                },
+                errorBuilder: (_, _, _) => lowres,
+              ),
+            ),
           ),
         );
       },

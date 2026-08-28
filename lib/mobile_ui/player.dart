@@ -50,7 +50,7 @@ class Player extends ConsumerWidget {
             alignment: Alignment.topCenter,
             child: AlbumArtProvider(
               track: track,
-              highRes: true,
+              highRes: expanded > 0,
               builder: (context, primaryColor, secondaryColor, cover) {
                 return Stack(
                   children: [
