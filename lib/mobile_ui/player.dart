@@ -223,41 +223,43 @@ class _Expanded extends StatelessWidget {
       track: track,
       highRes: true,
       builder: (context, accentColor, _, cover) {
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            // BACKGROUND
-            if (accentColor != null)
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      accentColor,
-                      Color.lerp(accentColor, AppColors.background, 0.15)!,
-                      Color.lerp(accentColor, AppColors.background, 0.4)!,
-                      AppColors.background,
-                    ],
-                    stops: [0.0, 0.2, 0.35, 1.0],
-                  ),
-                ),
-              )
-            else
-              Container(color: AppColors.background),
-            //CONTENT
-            Padding(
+        final color = accentColor ?? AppColors.background;
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          layoutBuilder: (current, previous) => Stack(
+            fit: StackFit.expand,
+            children: [...previous, if (current != null) current],
+          ),
+          child: Container(
+            key: ValueKey(track?.id),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  color,
+                  Color.lerp(color, AppColors.background, 0.15)!,
+                  Color.lerp(color, AppColors.background, 0.4)!,
+                  AppColors.background,
+                ],
+                stops: const [0.0, 0.2, 0.35, 1.0],
+              ),
+            ),
+            child: Padding(
               padding: EdgeInsets.only(top: topInset),
               child: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(24.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: cover,
                     ),
                   ),
-                  // Title + artist
+
                   Text(
                     track?.title ?? 'Nothing playing',
                     style: AppTextStyles.playerTitle,
@@ -266,6 +268,7 @@ class _Expanded extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
+
                   Text(
                     track?.artist ?? '',
                     style: AppTextStyles.playerSubtitle,
@@ -274,7 +277,6 @@ class _Expanded extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Seek bar
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 3,
@@ -298,7 +300,6 @@ class _Expanded extends StatelessWidget {
                     ),
                   ),
 
-                  // Time labels
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Row(
@@ -309,19 +310,22 @@ class _Expanded extends StatelessWidget {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
-                  // Previous | Play/Pause | Next
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 36,
                           vertical: 8,
                         ),
                         iconSize: 56,
-                        icon: Icon(Icons.skip_previous, color: Colors.white),
+                        icon: const Icon(
+                          Icons.skip_previous,
+                          color: Colors.white,
+                        ),
                         onPressed: () =>
                             ref.read(queueProvider.notifier).previous(),
                       ),
@@ -348,12 +352,12 @@ class _Expanded extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 36,
                           vertical: 8,
                         ),
                         iconSize: 56,
-                        icon: Icon(Icons.skip_next, color: Colors.white),
+                        icon: const Icon(Icons.skip_next, color: Colors.white),
                         onPressed: () =>
                             ref.read(queueProvider.notifier).next(),
                       ),
@@ -362,7 +366,7 @@ class _Expanded extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+          ),
         );
       },
     );
