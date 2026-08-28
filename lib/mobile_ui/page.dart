@@ -5,6 +5,8 @@ import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util.dart';
 
+import 'ui_state.dart';
+
 class AppPage extends StatelessWidget {
   final String title;
   final Widget child;
@@ -87,8 +89,12 @@ class TrackWidget extends ConsumerWidget {
           onSwipe: () => ref.read(queueProvider.notifier).add(track),
           color: color1 ?? AppColors.accentFallback,
           child: InkWell(
-            onTap: () =>
-                ref.read(queueProvider.notifier).setSource(tracks, index),
+            onTap: () => {
+              ref.read(queueProvider.notifier).setSource(tracks, index),
+              ref
+                  .read(appNavigationProvider.notifier)
+                  .setPlayerState(PlayerState.expanded),
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
