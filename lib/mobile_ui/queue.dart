@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
+import 'package:music_client/theme.dart';
 
 // Named record used as a flat item descriptor for the ReorderableListView.
 typedef _ListItem = ({
@@ -97,10 +99,11 @@ class QueueWidget extends ConsumerWidget {
 
     // ── Widget ────────────────────────────────────────────────────────────────
     return Container(
-      color: Colors.blue,
+      color: AppColors.background,
       child: SizedBox(
         height: maxSize * factor,
         child: ReorderableListView.builder(
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
           scrollController: scrollController,
           buildDefaultDragHandles:
               false, // only explicit drag handles can initiate
@@ -147,6 +150,8 @@ class QueueWidget extends ConsumerWidget {
               isReordering: isReordering,
             );
           },
+          proxyDecorator: (child, index, animation) =>
+              Material(color: AppColors.elevated, child: child),
         ),
       ),
     );
@@ -252,15 +257,26 @@ class _QueueTrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: Listener(
-        onPointerDown: (_) => isReordering.value = true,
-        onPointerUp: (_) => isReordering.value = false,
-        onPointerCancel: (_) => isReordering.value = false,
-        child: ReorderableDragStartListener(
-          index: listIndex,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Icon(Icons.drag_handle, color: Colors.white38),
+      trailing: SizedBox(
+        width: 40,
+        child: Listener(
+          onPointerDown: (_) {
+            isReordering.value = true;
+            HapticFeedback.mediumImpact();
+          },
+          onPointerUp: (_) {
+            isReordering.value = false;
+            HapticFeedback.lightImpact();
+          },
+          onPointerCancel: (_) {
+            isReordering.value = false;
+            HapticFeedback.lightImpact();
+          },
+          child: ReorderableDragStartListener(
+            index: listIndex,
+            child: const Center(
+              child: Icon(Icons.drag_handle, color: Colors.white38),
+            ),
           ),
         ),
       ),
@@ -282,23 +298,29 @@ class _CoverArt extends StatelessWidget {
       child: ColoredBox(
         color: Colors.white12,
         child: SizedBox(
-          width: 48,
-          height: 48,
+          width: AppSizes.miniAlbumArtD,
+          height: AppSizes.miniAlbumArtD,
           child: Consumer(
             builder: (context, ref, _) {
               final cover = ref.watch(
-                coverProvider(CoverRequest(track, (48 * dpr).ceil())),
+                coverProvider(
+                  CoverRequest(track, (AppSizes.miniAlbumArt * dpr).ceil()),
+                ),
               );
 
               return cover.when(
                 loading: () => const SizedBox(
-                  width: 40,
-                  height: 40,
+                  width: AppSizes.miniAlbumArtD,
+                  height: AppSizes.miniAlbumArtD,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 error: (_, _) => const Icon(Icons.music_note),
-                data: (img) =>
-                    Image(image: img, width: 40, height: 40, fit: BoxFit.cover),
+                data: (img) => Image(
+                  image: img,
+                  width: AppSizes.miniAlbumArtD,
+                  height: AppSizes.miniAlbumArtD,
+                  fit: BoxFit.cover,
+                ),
               );
             },
           ),

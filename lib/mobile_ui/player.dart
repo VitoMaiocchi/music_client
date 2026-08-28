@@ -229,10 +229,8 @@ class _Expanded extends StatelessWidget {
           duration: const Duration(milliseconds: 250),
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
-          layoutBuilder: (current, previous) => Stack(
-            fit: StackFit.expand,
-            children: [...previous, if (current != null) current],
-          ),
+          layoutBuilder: (current, previous) =>
+              Stack(fit: StackFit.expand, children: [...previous, ?current]),
           child: Container(
             key: ValueKey(track?.id),
             decoration: BoxDecoration(
