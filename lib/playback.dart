@@ -1,3 +1,4 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:music_client/backend.dart';
 import 'package:uuid/uuid.dart';
@@ -6,10 +7,6 @@ import 'package:just_audio/just_audio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final queueProvider = NotifierProvider<QueueNotifier, Queue>(QueueNotifier.new);
-
-final playbackServiceProvider = Provider((ref) {
-  return PlaybackService(ref);
-});
 
 final positionProvider = StreamProvider<Duration>((ref) {
   return ref.read(playbackServiceProvider).player.positionStream;
@@ -223,29 +220,62 @@ class QueueNotifier extends Notifier<Queue> {
       state = state.reorder(oldIndex, newIndex);
 }
 
-class PlaybackService {
-  final Ref _ref;
+late PlaybackService playbackService;
+
+final playbackServiceProvider = Provider<PlaybackService>((ref) {
+  ref.listen(queueProvider, (previous, next) {
+    if (previous == next) return;
+
+    final current = next[0];
+    if (current == null) return;
+    if (current.$2 == previous?[0]?.$2) return;
+
+    playbackService.mediaItem.add(
+      MediaItem(id: current.$2, title: current.$1.title),
+    );
+
+    ref.read(audioSourceProvider(current.$1).future).then((source) async {
+      await playbackService.player.setAudioSource(source);
+      await playbackService.play();
+    });
+  });
+
+  playbackService.player.playerStateStream.listen((state) {
+    playbackService.playbackState.add(
+      PlaybackState(
+        controls: [
+          if (state.playing) MediaControl.pause else MediaControl.play,
+        ],
+        processingState: switch (state.processingState) {
+          ProcessingState.idle => AudioProcessingState.idle,
+          ProcessingState.loading => AudioProcessingState.loading,
+          ProcessingState.buffering => AudioProcessingState.buffering,
+          ProcessingState.ready => AudioProcessingState.ready,
+          ProcessingState.completed => AudioProcessingState.completed,
+        },
+        playing: state.playing,
+      ),
+    );
+
+    if (state.processingState == ProcessingState.completed) {
+      ref.read(queueProvider.notifier).next();
+    }
+  });
+
+  return playbackService;
+});
+
+class PlaybackService extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
 
-  PlaybackService(this._ref) {
-    _ref.listen(queueProvider, (previous, next) {
-      if (previous == next) return;
-      final current = next[0];
-      if (current == null) return;
-      if (current.$2 == previous?[0]?.$2) return;
-      _ref.read(audioSourceProvider(current.$1).future).then((source) async {
-        await _player.setAudioSource(source);
-        await _player.play();
-      });
-    });
-    _player.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        _ref.read(queueProvider.notifier).next();
-      }
-    });
-  }
-
+  @override
   Future<void> pause() => _player.pause();
+
+  @override
   Future<void> play() => _player.play();
+
+  @override
+  Future<void> stop() => _player.stop();
+
   AudioPlayer get player => _player;
 }
