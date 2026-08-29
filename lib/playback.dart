@@ -223,6 +223,10 @@ class QueueNotifier extends Notifier<Queue> {
 late PlaybackService playbackService;
 
 final playbackServiceProvider = Provider<PlaybackService>((ref) {
+  playbackService.onSkipToNext = () => ref.read(queueProvider.notifier).next();
+  playbackService.onSkipToPrevious = () =>
+      ref.read(queueProvider.notifier).previous();
+
   ref.listen(queueProvider, (previous, next) {
     if (previous == next) return;
 
@@ -245,12 +249,27 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
     });
   });
 
+  playbackService.player.durationStream.listen((duration) {
+    final current = playbackService.mediaItem.valueOrNull;
+    if (current == null) return;
+    playbackService.mediaItem.add(current.copyWith(duration: duration));
+  });
+
   playbackService.player.playerStateStream.listen((state) {
     playbackService.playbackState.add(
-      PlaybackState(
+      playbackService.playbackState.value.copyWith(
         controls: [
+          MediaControl.skipToPrevious,
           if (state.playing) MediaControl.pause else MediaControl.play,
+          MediaControl.skipToNext,
         ],
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
+        // Which controls show in the collapsed/compact notification view.
+        androidCompactActionIndices: const [0, 1, 2],
         processingState: switch (state.processingState) {
           ProcessingState.idle => AudioProcessingState.idle,
           ProcessingState.loading => AudioProcessingState.loading,
@@ -259,6 +278,9 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
           ProcessingState.completed => AudioProcessingState.completed,
         },
         playing: state.playing,
+        updatePosition: playbackService.player.position,
+        bufferedPosition: playbackService.player.bufferedPosition,
+        speed: playbackService.player.speed,
       ),
     );
 
@@ -273,6 +295,9 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
 class PlaybackService extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
 
+  void Function()? onSkipToNext;
+  void Function()? onSkipToPrevious;
+
   @override
   Future<void> pause() => _player.pause();
 
@@ -281,6 +306,15 @@ class PlaybackService extends BaseAudioHandler {
 
   @override
   Future<void> stop() => _player.stop();
+
+  @override
+  Future<void> skipToNext() async => onSkipToNext?.call();
+
+  @override
+  Future<void> skipToPrevious() async => onSkipToPrevious?.call();
+
+  @override
+  Future<void> seek(Duration position) => _player.seek(position);
 
   AudioPlayer get player => _player;
 }
