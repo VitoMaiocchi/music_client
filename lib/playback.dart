@@ -231,7 +231,12 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
     if (current.$2 == previous?[0]?.$2) return;
 
     playbackService.mediaItem.add(
-      MediaItem(id: current.$2, title: current.$1.title),
+      MediaItem(
+        id: current.$2,
+        title: current.$1.title,
+        artist: current.$1.artist,
+        artUri: SubsonicService().getCoverUri(current.$1.coverArt, 1000),
+      ),
     );
 
     ref.read(audioSourceProvider(current.$1).future).then((source) async {

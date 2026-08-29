@@ -135,4 +135,13 @@ class SubsonicService {
     final uri = _buildUri('stream', params);
     return AudioSource.uri(Uri.parse(uri.toString()));
   }
+
+  Uri getCoverUri(String coverArtId, [int? size]) {
+    final params = <String, String>{
+      'id': coverArtId,
+      if (size != null) 'size': size.toString(),
+    };
+
+    return _buildUri('getCoverArt', params);
+  }
 }
