@@ -1,98 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
-import 'package:music_client/mobile_ui/ui_state.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:palette_generator/palette_generator.dart';
-
-class SwipeableTile extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onSwipe;
-  final double threshold;
-  final double maxDrag;
-  final Color color;
-
-  const SwipeableTile({
-    super.key,
-    required this.child,
-    required this.onSwipe,
-    this.threshold = 40,
-    this.maxDrag = 80,
-    this.color = Colors.orange,
-  });
-
-  @override
-  State<SwipeableTile> createState() => _SwipeableTileState();
-}
-
-class _SwipeableTileState extends State<SwipeableTile>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-      upperBound: widget.maxDrag,
-      lowerBound: 0,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onDragUpdate(DragUpdateDetails details) {
-    final oldT = _controller.value > widget.threshold;
-    _controller.value += details.delta.dx;
-    final newT = _controller.value > widget.threshold;
-    if (oldT != newT) HapticFeedback.lightImpact();
-  }
-
-  void _onDragEnd(DragEndDetails details) {
-    if (_controller.value > widget.threshold) {
-      debugPrint('swiped right');
-      widget.onSwipe();
-    }
-
-    _controller.animateTo(0, curve: Curves.easeOut);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (_, _) {
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(width: _controller.value, color: widget.color),
-              ),
-            ),
-            Transform.translate(
-              offset: Offset(_controller.value, 0),
-              child: GestureDetector(
-                onHorizontalDragUpdate: _onDragUpdate,
-                onHorizontalDragEnd: _onDragEnd,
-                child: widget.child,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
 
 class AlbumArtProvider extends ConsumerWidget {
   static const lowResSizeUnscaled = AppSizes.miniAlbumArt;
@@ -232,72 +145,6 @@ class AlbumArtProvider extends ConsumerWidget {
                 );
               },
               errorBuilder: (_, _, _) => blurredLowres,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class TrackWidget extends ConsumerWidget {
-  final TrackList tracks;
-  final int index;
-  static const int _size = AppSizes.miniAlbumArt;
-
-  const TrackWidget({super.key, required this.tracks, required this.index});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final track = tracks.tracks[index];
-
-    return AlbumArtProvider(
-      track: track,
-      highRes: false,
-      builder: (context, color1, color2, cover) {
-        return SwipeableTile(
-          onSwipe: () => ref.read(queueProvider.notifier).add(track),
-          color: color1 ?? AppColors.accentFallback,
-          child: InkWell(
-            onTap: () => {
-              ref.read(queueProvider.notifier).setSource(tracks, index),
-              ref
-                  .read(appNavigationProvider.notifier)
-                  .setPlayerState(PlayerState.expanded),
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: _size.toDouble(),
-                    height: _size.toDouble(),
-                    child: cover,
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            track.title,
-                            style: AppTextStyles.listTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            track.artist,
-                            style: AppTextStyles.listSubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         );

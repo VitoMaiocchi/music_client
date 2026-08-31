@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
-import 'package:music_client/util.dart';
+import 'package:music_client/util/album_art.dart';
 
 class Player extends ConsumerWidget {
   static const double _transitionThreshold = 0.1;
