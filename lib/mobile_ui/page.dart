@@ -7,14 +7,14 @@ import 'package:music_client/util.dart';
 
 import 'ui_state.dart';
 
-class AppPage extends StatelessWidget {
+class _PageWidget extends StatelessWidget {
   final String title;
   final Widget child;
   final Color backgroundColor;
   final Color? backgroundColorGradient;
   final VoidCallback? onBack;
 
-  const AppPage({
+  const _PageWidget({
     super.key,
     required this.title,
     required this.child,
@@ -70,80 +70,49 @@ class AppPage extends StatelessWidget {
   }
 }
 
-class TrackWidget extends ConsumerWidget {
-  final TrackList tracks;
-  final int index;
-  static const int _size = AppSizes.miniAlbumArt;
+Widget buildPage(AppPage page) {
+  switch (page) {
+    case AppPagePlaylists():
+      return const _PagePlaceholder('Playlists');
+    case AppPageAlbums():
+      return const _PagePlaceholder('Albums');
+    case AppPageTracks():
+      return const _PagePlaceholder('Tracks');
+    case AppPageSearch():
+      return const _PagePlaceholder('Search');
+    case AppPageStarredTracks():
+      return const _StarredTracksPage();
+    case AppPageAlbum():
+      return const _PagePlaceholder('Album');
+    case AppPagePlaylist():
+      return const _PagePlaceholder('Playlist');
+    case AppPageArtist():
+      return const _PagePlaceholder('Artist');
+  }
+}
 
-  const TrackWidget({super.key, required this.tracks, required this.index});
+class _PagePlaceholder extends StatelessWidget {
+  final String title;
+
+  const _PagePlaceholder(this.title);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final track = tracks.tracks[index];
-
-    return AlbumArtProvider(
-      track: track,
-      highRes: false,
-      builder: (context, color1, color2, cover) {
-        return SwipeableTile(
-          onSwipe: () => ref.read(queueProvider.notifier).add(track),
-          color: color1 ?? AppColors.accentFallback,
-          child: InkWell(
-            onTap: () => {
-              ref.read(queueProvider.notifier).setSource(tracks, index),
-              ref
-                  .read(appNavigationProvider.notifier)
-                  .setPlayerState(PlayerState.expanded),
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: _size.toDouble(),
-                    height: _size.toDouble(),
-                    child: cover,
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            track.title,
-                            style: AppTextStyles.listTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            track.artist,
-                            style: AppTextStyles.listSubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+  Widget build(BuildContext context) {
+    return _PageWidget(
+      title: title,
+      child: const Center(child: Text('Page not implemented')),
     );
   }
 }
 
-class StarredTracksPage extends ConsumerWidget {
-  const StarredTracksPage({super.key});
+class _StarredTracksPage extends ConsumerWidget {
+  const _StarredTracksPage();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracks = ref.watch(starredTracksProvider);
 
-    return AppPage(
+    return _PageWidget(
       title: 'Favorites',
       child: tracks.when(
         loading: () => const Center(

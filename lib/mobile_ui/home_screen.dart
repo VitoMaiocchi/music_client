@@ -1,10 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide NavigationBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:music_client/mobile_ui/page.dart';
 import 'package:music_client/mobile_ui/player.dart';
 import 'package:music_client/mobile_ui/queue.dart';
 
+import 'page.dart';
 import 'ui_state.dart';
 import 'navigation_bar.dart';
 
@@ -12,14 +12,11 @@ class HomeScreenMobile extends ConsumerStatefulWidget {
   final Duration snapDuration;
   final double miniPlayerHeight;
   final double navigationHeight;
-  final Widget background;
-
   const HomeScreenMobile({
     super.key,
     this.snapDuration = const Duration(milliseconds: 160),
     this.miniPlayerHeight = 60,
     this.navigationHeight = 80,
-    this.background = const StarredTracksPage(),
   });
 
   @override
@@ -137,6 +134,10 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
       _animateTo(next.playerState);
     });
 
+    final currentPage = ref.watch(
+      appNavigationProvider.select((state) => state.pageStack.last),
+    );
+
     final screenHeight = MediaQuery.of(context).size.height;
 
     final miniPlayerGrowth =
@@ -214,7 +215,7 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
                     screenHeight -
                     widget.navigationHeight -
                     widget.miniPlayerHeight,
-                child: widget.background,
+                child: buildPage(currentPage),
               ),
             ),
 

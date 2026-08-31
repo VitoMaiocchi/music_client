@@ -60,6 +60,18 @@ class StarredTracks extends TrackList {
   const StarredTracks(super.tracks);
 }
 
+class AlbumTracks extends TrackList {
+  final String albumId;
+
+  const AlbumTracks(super.tracks, {required this.albumId});
+}
+
+class PlaylistTracks extends TrackList {
+  final String playlistId;
+
+  const PlaylistTracks(super.tracks, {required this.playlistId});
+}
+
 class EmptyTrackList extends TrackList {
   const EmptyTrackList() : super(const []);
 }
