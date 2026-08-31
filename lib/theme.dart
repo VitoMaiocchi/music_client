@@ -39,7 +39,11 @@ abstract final class AppTextStyles {
   );
 }
 
+enum AlbumArtSizes { track, playlist, album, full }
+
 abstract final class AppSizes {
   static const int miniAlbumArt = 48;
   static const double miniAlbumArtD = 48.0;
+  static const int smallAlbumArt = 64;
+  static const double smallAlbumArtD = 64.0;
 }

@@ -6,9 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/mobile_ui/home_screen.dart';
 import 'package:music_client/playback.dart';
 
-import 'mobile_ui/page.dart';
-import 'mobile_ui/ui_state.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

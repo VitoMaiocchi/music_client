@@ -73,7 +73,7 @@ class _PageWidget extends StatelessWidget {
 Widget buildPage(AppPage page) {
   switch (page) {
     case AppPagePlaylists():
-      return const _PagePlaceholder('Playlists');
+      return const _PlaylistsPage();
     case AppPageAlbums():
       return const _PagePlaceholder('Albums');
     case AppPageTracks():
@@ -124,6 +124,66 @@ class _StarredTracksPage extends ConsumerWidget {
           itemCount: tracks.length,
           itemBuilder: (context, i) {
             return TrackWidget(tracks: TrackList(tracks), index: i);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaylistsPage extends ConsumerWidget {
+  const _PlaylistsPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playlists = ref.watch(playlistsProvider);
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+
+    return _PageWidget(
+      title: 'Playlists',
+      child: playlists.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (playlists) => ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: playlists.length,
+          itemBuilder: (context, i) {
+            final playlist = playlists[i];
+            final cover = ref.watch(
+              coverProvider(
+                CoverRequest.fromID(
+                  playlist.coverArt,
+                  (AppSizes.smallAlbumArt * dpr).ceil(),
+                ),
+              ),
+            );
+            return ListTile(
+              leading: cover.when(
+                loading: () => const SizedBox(
+                  width: AppSizes.smallAlbumArtD,
+                  height: AppSizes.smallAlbumArtD,
+                  child: CircularProgressIndicator(
+                    color: AppColors.progressIndicators,
+                  ),
+                ),
+                error: (_, _) => const Icon(Icons.playlist_play),
+                data: (imageProvider) => Image(
+                  image: imageProvider,
+                  width: AppSizes.smallAlbumArtD,
+                  height: AppSizes.smallAlbumArtD,
+                  errorBuilder: (_, _, _) => const Icon(Icons.playlist_play),
+                ),
+              ),
+              title: Text(playlist.name),
+              subtitle: Text('${playlist.songCount} songs'),
+              onTap: () {
+                ref
+                    .read(appNavigationProvider.notifier)
+                    .pushPage(page: AppPagePlaylist(playlistId: playlist.id));
+              },
+            );
           },
         ),
       ),

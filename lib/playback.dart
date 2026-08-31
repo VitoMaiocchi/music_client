@@ -20,6 +20,7 @@ final playerStateProvider = StreamProvider<PlayerState>((ref) {
   return ref.read(playbackServiceProvider).player.playerStateStream;
 });
 
+@immutable
 class Track {
   final String id;
   final String title;
@@ -47,6 +48,35 @@ class Track {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+@immutable
+class Playlist {
+  final String id;
+  final String name;
+  final String coverArt;
+  final int songCount;
+  final Duration duration;
+
+  const Playlist({
+    required this.id,
+    required this.name,
+    required this.coverArt,
+    required this.songCount,
+    required this.duration,
+  });
+
+  factory Playlist.fromXml(XmlElement element) {
+    return Playlist(
+      id: element.getAttribute('id') ?? '',
+      name: element.getAttribute('name') ?? '',
+      coverArt: element.getAttribute('coverArt') ?? '',
+      songCount: int.tryParse(element.getAttribute('songCount') ?? '0') ?? 0,
+      duration: Duration(
+        seconds: int.tryParse(element.getAttribute('duration') ?? '0') ?? 0,
+      ),
+    );
+  }
 }
 
 @immutable

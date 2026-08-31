@@ -15,6 +15,10 @@ final starredTracksProvider = FutureProvider<List<Track>>((ref) async {
   return ref.read(subsonicServiceProvider).getStarred();
 });
 
+final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
+  return ref.read(subsonicServiceProvider).getPlaylists();
+});
+
 final audioSourceProvider = FutureProvider.family<AudioSource, Track>((
   ref,
   track,
@@ -39,19 +43,18 @@ final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
 });
 
 class CoverRequest {
-  final Track track;
+  final String coverID;
   final int? size;
 
-  const CoverRequest(this.track, this.size);
+  CoverRequest(Track track, this.size) : coverID = track.coverArt;
+  CoverRequest.fromID(this.coverID, this.size);
 
   @override
   bool operator ==(Object other) =>
-      other is CoverRequest &&
-      other.track.coverArt == track.coverArt &&
-      other.size == size;
+      other is CoverRequest && other.coverID == coverID && other.size == size;
 
   @override
-  int get hashCode => Object.hash(track.coverArt, size);
+  int get hashCode => Object.hash(coverID, size);
 }
 
 class SubsonicService {
@@ -106,6 +109,37 @@ class SubsonicService {
         .toList();
   }
 
+  Future<List<Playlist>> getPlaylists() async {
+    final response = await http.get(_buildUri('getPlaylists'));
+
+    if (response.statusCode != 200) {
+      throw Exception('HTTP ${response.statusCode}');
+    }
+
+    final body = utf8.decode(response.bodyBytes);
+    return _parsePlaylists(body);
+  }
+
+  List<Playlist> _parsePlaylists(String xmlBody) {
+    final document = XmlDocument.parse(xmlBody);
+
+    // check for subsonic error
+    final status = document
+        .findAllElements('subsonic-response')
+        .first
+        .getAttribute('status');
+
+    if (status != 'ok') {
+      final error = document.findAllElements('error').first;
+      throw Exception('Subsonic error: ${error.getAttribute('message')}');
+    }
+
+    return document
+        .findAllElements('playlist')
+        .map((element) => Playlist.fromXml(element))
+        .toList();
+  }
+
   final HashMap<CoverRequest, ImageProvider> _coverCache = HashMap();
   final HashMap<CoverRequest, Future<PaletteGenerator>> _paletteCache =
       HashMap();
@@ -113,7 +147,7 @@ class SubsonicService {
   Future<ImageProvider> getCover(CoverRequest req) async {
     return _coverCache.putIfAbsent(req, () {
       final params = <String, String>{
-        'id': req.track.coverArt,
+        'id': req.coverID,
         if (req.size != null) 'size': req.size.toString(),
       };
 
