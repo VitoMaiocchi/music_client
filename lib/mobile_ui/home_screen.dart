@@ -1,30 +1,12 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide NavigationBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/mobile_ui/page.dart';
 import 'package:music_client/mobile_ui/player.dart';
 import 'package:music_client/mobile_ui/queue.dart';
-import 'package:music_client/theme.dart';
 
 import 'ui_state.dart';
-
-class NavigationBar extends StatelessWidget {
-  final double maxSize;
-  final double factor;
-
-  const NavigationBar({super.key, required this.maxSize, required this.factor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: maxSize * factor,
-      color: Colors.black,
-      child: const Center(
-        child: Text("Navigation UI", style: AppTextStyles.listTitle),
-      ),
-    );
-  }
-}
+import 'navigation_bar.dart';
 
 class HomeScreenMobile extends ConsumerStatefulWidget {
   final Duration snapDuration;
