@@ -80,6 +80,36 @@ class Playlist {
 }
 
 @immutable
+class Album {
+  final String id;
+  final String name;
+  final String artist;
+  final String coverArt;
+  final String artistId;
+  final String userRating;
+
+  const Album({
+    required this.id,
+    required this.name,
+    required this.artist,
+    required this.coverArt,
+    required this.artistId,
+    required this.userRating,
+  });
+
+  factory Album.fromXml(XmlElement element) {
+    return Album(
+      id: element.getAttribute('id') ?? '',
+      name: element.getAttribute('name') ?? '',
+      artist: element.getAttribute('artist') ?? '',
+      coverArt: element.getAttribute('coverArt') ?? '',
+      artistId: element.getAttribute('artistId') ?? '',
+      userRating: element.getAttribute('userRating') ?? '',
+    );
+  }
+}
+
+@immutable
 class TrackList {
   final List<Track> tracks;
 

@@ -42,6 +42,10 @@ final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
   return service.getPalette(req);
 });
 
+final albumListProvider = AsyncNotifierProvider<AlbumListNotifier, List<Album>>(
+  AlbumListNotifier.new,
+);
+
 class CoverRequest {
   final String coverID;
   final int? size;
@@ -140,6 +144,24 @@ class SubsonicService {
         .toList();
   }
 
+  Future<List<Album>> getAlbumList({
+    required int offset,
+    int size = 50,
+    String type = 'highest',
+  }) async {
+    final response = await http.get(
+      _buildUri('getAlbumList', {
+        'type': type,
+        'offset': '$offset',
+        'size': '$size',
+      }),
+    );
+    final body = utf8.decode(response.bodyBytes);
+    return XmlDocument.parse(
+      body,
+    ).findAllElements('album').map(Album.fromXml).toList();
+  }
+
   final HashMap<CoverRequest, ImageProvider> _coverCache = HashMap();
   final HashMap<CoverRequest, Future<PaletteGenerator>> _paletteCache =
       HashMap();
@@ -178,4 +200,32 @@ class SubsonicService {
 
     return _buildUri('getCoverArt', params);
   }
+}
+
+abstract class PaginatedNotifier<T> extends AsyncNotifier<List<T>> {
+  int get pageSize => 50;
+  bool hasMore = true;
+  bool _loading = false;
+
+  Future<List<T>> fetchPage(int offset, int size);
+
+  @override
+  Future<List<T>> build() => fetchPage(0, pageSize);
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (_loading || !hasMore || current == null) return;
+    _loading = true;
+    final next = await fetchPage(current.length, pageSize);
+    hasMore = next.length == pageSize;
+    state = AsyncData([...current, ...next]);
+    _loading = false;
+  }
+}
+
+class AlbumListNotifier extends PaginatedNotifier<Album> {
+  @override
+  Future<List<Album>> fetchPage(int offset, int size) => ref
+      .read(subsonicServiceProvider)
+      .getAlbumList(offset: offset, size: size);
 }

@@ -76,7 +76,7 @@ Widget buildPage(AppPage page) {
     case AppPagePlaylists():
       return const _PlaylistsPage();
     case AppPageAlbums():
-      return const _PagePlaceholder('Albums');
+      return const _AlbumListPage();
     case AppPageTracks():
       return const _PagePlaceholder('Tracks');
     case AppPageSearch():
@@ -166,6 +166,55 @@ class _PlaylistsPage extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _AlbumListPage extends ConsumerWidget {
+  const _AlbumListPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _PageWidget(title: 'Albums', child: _AlbumGrid());
+  }
+}
+
+class _AlbumGrid extends ConsumerStatefulWidget {
+  const _AlbumGrid();
+  @override
+  ConsumerState<_AlbumGrid> createState() => _AlbumGridState();
+}
+
+class _AlbumGridState extends ConsumerState<_AlbumGrid> {
+  final _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      if (_controller.position.pixels >
+          _controller.position.maxScrollExtent - 300) {
+        ref.read(albumListProvider.notifier).loadMore();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = ref
+        .watch(albumListProvider)
+        .when(loading: () => [], error: (e, _) => [], data: (albums) => albums);
+    return GridView.builder(
+      controller: _controller,
+      itemCount: albums.length,
+      itemBuilder: (_, i) => Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Center(child: AlbumArtWidget(coverArt: albums[i].coverArt)),
+      ),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        childAspectRatio: 1.0,
       ),
     );
   }
