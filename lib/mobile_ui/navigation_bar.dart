@@ -40,9 +40,9 @@ class NavigationBar extends ConsumerWidget {
             icon: Icon(Icons.music_note),
             color: Colors.white,
             onPressed: () {
-              ref //THIS IS ONLY TEMPORARY SHOULD BE APP PAGE TRACKS
+              ref
                   .read(appNavigationProvider.notifier)
-                  .pushPage(page: AppPageStarredTracks(), newStack: true);
+                  .pushPage(page: AppPageTracks(), newStack: true);
             },
           ),
           IconButton(

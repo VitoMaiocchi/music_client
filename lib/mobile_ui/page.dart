@@ -78,7 +78,7 @@ Widget buildPage(AppPage page) {
     case AppPageAlbums():
       return const _AlbumListPage();
     case AppPageTracks():
-      return const _PagePlaceholder('Tracks');
+      return const _TopTracksPage();
     case AppPageSearch():
       return const _PagePlaceholder('Search');
     case AppPageStarredTracks():
@@ -102,6 +102,55 @@ class _PagePlaceholder extends StatelessWidget {
     return _PageWidget(
       title: title,
       child: const Center(child: Text('Page not implemented')),
+    );
+  }
+}
+
+class _TopTracksPage extends ConsumerWidget {
+  const _TopTracksPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _PageWidget(title: 'Top Tracks', child: _TopTrackList());
+  }
+}
+
+class _TopTrackList extends ConsumerStatefulWidget {
+  const _TopTrackList();
+  @override
+  ConsumerState<_TopTrackList> createState() => _TopTrackListState();
+}
+
+class _TopTrackListState extends ConsumerState<_TopTrackList> {
+  final _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      if (_controller.position.pixels >
+          _controller.position.maxScrollExtent - 300) {
+        ref.read(topTracksProvider.notifier).loadMore();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tracks = ref.watch(topTracksProvider);
+    return tracks.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.progressIndicators),
+      ),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (tracks) => ListView.builder(
+        controller: _controller,
+        padding: EdgeInsets.zero,
+        itemCount: tracks.length,
+        itemBuilder: (context, i) {
+          return TrackWidget(tracks: TrackList(tracks), index: i);
+        },
+      ),
     );
   }
 }

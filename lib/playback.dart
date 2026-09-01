@@ -43,6 +43,17 @@ class Track {
     );
   }
 
+  factory Track.fromJson(Map<String, dynamic> json) {
+    final hasCoverArt = json['hasCoverArt'] as bool? ?? false;
+    return Track(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      artist: json['artist'] as String? ?? '',
+      // Navidrome serves cover art by track id when the track has embedded art
+      coverArt: hasCoverArt ? (json['id'] as String? ?? '') : '',
+    );
+  }
+
   @override
   bool operator ==(Object other) => other is Track && other.id == id;
 
