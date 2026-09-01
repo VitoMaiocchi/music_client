@@ -148,9 +148,28 @@ class _PlaylistsPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (playlists) => ListView.builder(
           padding: EdgeInsets.zero,
-          itemCount: playlists.length,
+          itemCount: playlists.length + 1,
           itemBuilder: (context, i) {
-            final playlist = playlists[i];
+            if (i == 0) {
+              // "Starred" playlist
+              return ListTile(
+                leading: SizedBox(
+                  width: AppSizes.playlistAlbumArt.toDouble(),
+                  height: AppSizes.playlistAlbumArt.toDouble(),
+                  child: Container(
+                    color: Colors.blue,
+                    child: Icon(Icons.music_note, size: 32),
+                  ),
+                ),
+                title: const Text('Liked Songs'),
+                onTap: () {
+                  ref
+                      .read(appNavigationProvider.notifier)
+                      .pushPage(page: const AppPageStarredTracks());
+                },
+              );
+            }
+            final playlist = playlists[i - 1];
             return ListTile(
               leading: AlbumArtWidget(
                 coverArt: playlist.coverArt,
