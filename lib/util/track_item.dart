@@ -9,7 +9,7 @@ import 'package:music_client/util/swipable_tile.dart';
 class TrackWidget extends ConsumerWidget {
   final TrackList tracks;
   final int index;
-  static const int _size = AppSizes.miniAlbumArt;
+  static const int _size = AppSizes.trackAlbumArt;
 
   const TrackWidget({super.key, required this.tracks, required this.index});
 
@@ -17,57 +17,53 @@ class TrackWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final track = tracks.tracks[index];
 
-    return AlbumArtProvider(
-      track: track,
-      highRes: false,
-      builder: (context, color1, color2, cover) {
-        return SwipeableTile(
-          onSwipe: () => ref.read(queueProvider.notifier).add(track),
-          color: color1 ?? AppColors.accentFallback,
-          child: InkWell(
-            onTap: () => {
-              ref.read(queueProvider.notifier).setSource(tracks, index),
-              ref
-                  .read(appNavigationProvider.notifier)
-                  .setPlayerState(PlayerState.expanded),
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: _size.toDouble(),
-                    height: _size.toDouble(),
-                    child: cover,
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            track.title,
-                            style: AppTextStyles.listTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            track.artist,
-                            style: AppTextStyles.listSubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+    return SwipeableTile(
+      onSwipe: () => ref.read(queueProvider.notifier).add(track),
+      color:
+          getPrimaryColor(track.coverArt, context, ref) ??
+          AppColors.accentFallback,
+      child: InkWell(
+        onTap: () => {
+          ref.read(queueProvider.notifier).setSource(tracks, index),
+          ref
+              .read(appNavigationProvider.notifier)
+              .setPlayerState(PlayerState.expanded),
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: _size.toDouble(),
+                height: _size.toDouble(),
+                child: AlbumArtWidget(coverArt: track.coverArt, size: _size),
               ),
-            ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.title,
+                        style: AppTextStyles.listTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        track.artist,
+                        style: AppTextStyles.listSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

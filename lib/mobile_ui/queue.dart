@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
+import 'package:music_client/util/album_art.dart';
 
 // Named record used as a flat item descriptor for the ReorderableListView.
 typedef _ListItem = ({
@@ -205,8 +205,9 @@ class _CurrentTrackTile extends StatelessWidget {
     return ColoredBox(
       color: Colors.white10,
       child: ListTile(
-        leading: _CoverArt(
-          track: track ?? Track(id: '', title: '', artist: '', coverArt: ''),
+        leading: AlbumArtWidget(
+          coverArt: track?.coverArt,
+          size: AppSizes.trackAlbumArt,
         ),
         title: Text(
           track?.title ?? '—',
@@ -244,7 +245,10 @@ class _QueueTrackTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: _CoverArt(track: track),
+      leading: AlbumArtWidget(
+        coverArt: track.coverArt,
+        size: AppSizes.trackAlbumArt,
+      ),
       title: Text(
         track.title,
         style: const TextStyle(color: Colors.white),
@@ -277,52 +281,6 @@ class _QueueTrackTile extends StatelessWidget {
             child: const Center(
               child: Icon(Icons.drag_handle, color: Colors.white38),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CoverArt extends StatelessWidget {
-  final Track track;
-
-  const _CoverArt({required this.track});
-
-  @override
-  Widget build(BuildContext context) {
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: ColoredBox(
-        color: Colors.white12,
-        child: SizedBox(
-          width: AppSizes.miniAlbumArtD,
-          height: AppSizes.miniAlbumArtD,
-          child: Consumer(
-            builder: (context, ref, _) {
-              final cover = ref.watch(
-                coverProvider(
-                  CoverRequest(track, (AppSizes.miniAlbumArt * dpr).ceil()),
-                ),
-              );
-
-              return cover.when(
-                loading: () => const SizedBox(
-                  width: AppSizes.miniAlbumArtD,
-                  height: AppSizes.miniAlbumArtD,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                error: (_, _) => const Icon(Icons.music_note),
-                data: (img) => Image(
-                  image: img,
-                  width: AppSizes.miniAlbumArtD,
-                  height: AppSizes.miniAlbumArtD,
-                  fit: BoxFit.cover,
-                ),
-              );
-            },
           ),
         ),
       ),

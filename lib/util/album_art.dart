@@ -3,65 +3,31 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
-import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
-import 'package:palette_generator/palette_generator.dart';
 
-class AlbumArtProvider extends ConsumerWidget {
-  static const lowResSizeUnscaled = AppSizes.miniAlbumArt;
-
-  final Track? track;
-  final bool highRes;
-  final Widget Function(BuildContext, Color?, Color?, Widget) builder;
-
-  const AlbumArtProvider({
-    super.key,
-    required this.track,
-    required this.builder,
-    this.highRes = false,
-  });
+class AlbumArtWidget extends ConsumerWidget {
+  final String? coverArt;
+  final int? size;
 
   static final _fallbackCover = Container(color: AppColors.surface);
 
-  (Color?, Color?) _extractColors(PaletteGenerator cover) {
-    Color primary =
-        cover.vibrantColor?.color ??
-        cover.dominantColor?.color ??
-        cover.lightVibrantColor?.color ??
-        cover.darkVibrantColor?.color ??
-        AppColors.textPrimary;
+  const AlbumArtWidget({super.key, this.coverArt, this.size});
 
-    Color secondary =
-        cover.darkMutedColor?.color ??
-        cover.mutedColor?.color ??
-        cover.lightMutedColor?.color ??
-        cover.dominantColor?.color ??
-        AppColors.progressIndicators;
+  Widget _buildAtSize(int size, BuildContext context, WidgetRef ref) {
+    if (coverArt == null || coverArt!.isEmpty) {
+      return SizedBox(
+        width: size.toDouble(),
+        height: size.toDouble(),
+        child: _fallbackCover,
+      );
+    }
 
-    return (primary, secondary);
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final lowResSize = (lowResSizeUnscaled * dpr).ceil();
-    final highResSize = (MediaQuery.of(context).size.width * dpr).ceil();
+    final lowResSize = (AppSizes.trackAlbumArt * dpr).ceil();
 
-    final coverLow = track != null
-        ? ref
-              .watch(coverProvider(CoverRequest(track!, lowResSize)))
-              .maybeWhen(data: (c) => c, orElse: () => null)
-        : null;
-
-    final paletteLow = track != null
-        ? ref
-              .watch(paletteProvider(CoverRequest(track!, lowResSize)))
-              .maybeWhen(data: (c) => c, orElse: () => null)
-        : null;
-
-    final colors = paletteLow != null
-        ? _extractColors(paletteLow)
-        : (null, null);
+    final coverLow = ref
+        .watch(coverProvider(CoverRequest(coverArt!, lowResSize)))
+        .maybeWhen(data: (c) => c, orElse: () => null);
 
     final lowres = coverLow != null
         ? Image(
@@ -73,61 +39,37 @@ class AlbumArtProvider extends ConsumerWidget {
           )
         : _fallbackCover;
 
-    if (!highRes) {
-      return builder(
-        context,
-        colors.$1,
-        colors.$2,
-        AspectRatio(aspectRatio: 1, child: lowres),
+    if (size <= AppSizes.trackAlbumArt) {
+      return SizedBox(
+        width: size.toDouble(),
+        height: size.toDouble(),
+        child: lowres,
       );
     }
 
-    final coverHigh = track != null
-        ? ref
-              .watch(coverProvider(CoverRequest(track!, highResSize)))
-              .maybeWhen(data: (c) => c, orElse: () => null)
-        : null;
+    final blurredLowres = ClipRect(
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(
+          sigmaX: 15,
+          sigmaY: 15,
+          tileMode: TileMode.mirror,
+        ),
+        child: lowres,
+      ),
+    );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = constraints.biggest.shortestSide;
-        final showHighRes = size * dpr > lowResSize * 1.2;
-        final targetPx = (size * dpr).ceil();
+    final targetPx = (size * dpr).ceil();
 
-        if (!showHighRes || coverHigh == null) {
-          return builder(
-            context,
-            colors.$1,
-            colors.$2,
-            AspectRatio(aspectRatio: 1, child: lowres),
-          );
-        }
+    final coverHigh = ref
+        .watch(coverProvider(CoverRequest(coverArt!, targetPx)))
+        .maybeWhen(data: (c) => c, orElse: () => null);
 
-        final boundedHighRes = ResizeImage(
-          coverHigh,
-          width: targetPx,
-          height: targetPx,
-        );
-
-        final blurredLowres = ClipRect(
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: 15,
-              sigmaY: 15,
-              tileMode: TileMode.mirror,
-            ),
-            child: lowres,
-          ),
-        );
-
-        return builder(
-          context,
-          colors.$1,
-          colors.$2,
-          AspectRatio(
-            aspectRatio: 1,
-            child: Image(
-              image: boundedHighRes,
+    return SizedBox(
+      width: size.toDouble(),
+      height: size.toDouble(),
+      child: coverHigh != null
+          ? Image(
+              image: coverHigh,
               fit: BoxFit.cover,
               frameBuilder: (context, child, frame, wasSyncLoaded) {
                 return AnimatedSwitcher(
@@ -145,10 +87,65 @@ class AlbumArtProvider extends ConsumerWidget {
                 );
               },
               errorBuilder: (_, _, _) => blurredLowres,
-            ),
-          ),
-        );
+            )
+          : blurredLowres,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (size != null) {
+      return _buildAtSize(size!, context, ref);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest.shortestSide;
+        return _buildAtSize(size.ceil(), context, ref);
       },
     );
   }
+}
+
+Color? getPrimaryColor(String? coverArt, BuildContext context, WidgetRef ref) {
+  if (coverArt == null || coverArt.isEmpty) return null;
+
+  final dpr = MediaQuery.of(context).devicePixelRatio;
+  final palette = ref
+      .watch(
+        paletteProvider(
+          CoverRequest(coverArt, AppSizes.trackAlbumArt * dpr.ceil()),
+        ),
+      )
+      .maybeWhen(data: (c) => c, orElse: () => null);
+
+  if (palette == null) return null;
+
+  return palette.vibrantColor?.color ??
+      palette.dominantColor?.color ??
+      palette.lightVibrantColor?.color ??
+      palette.darkVibrantColor?.color;
+}
+
+Color? getSecondaryColor(
+  String? coverArt,
+  BuildContext context,
+  WidgetRef ref,
+) {
+  if (coverArt == null || coverArt.isEmpty) return null;
+
+  final dpr = MediaQuery.of(context).devicePixelRatio;
+  final palette = ref
+      .watch(
+        paletteProvider(
+          CoverRequest(coverArt, AppSizes.trackAlbumArt * dpr.ceil()),
+        ),
+      )
+      .maybeWhen(data: (c) => c, orElse: () => null);
+
+  if (palette == null) return null;
+
+  return palette.darkMutedColor?.color ??
+      palette.mutedColor?.color ??
+      palette.lightMutedColor?.color ??
+      palette.dominantColor?.color;
 }

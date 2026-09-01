@@ -46,8 +46,8 @@ class CoverRequest {
   final String coverID;
   final int? size;
 
-  CoverRequest(Track track, this.size) : coverID = track.coverArt;
-  CoverRequest.fromID(this.coverID, this.size);
+  CoverRequest(this.coverID, this.size);
+  CoverRequest.fromTrack(Track track, this.size) : coverID = track.coverArt;
 
   @override
   bool operator ==(Object other) =>

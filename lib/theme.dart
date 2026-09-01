@@ -39,11 +39,28 @@ abstract final class AppTextStyles {
   );
 }
 
-enum AlbumArtSizes { track, playlist, album, full }
+enum AlbumArtSize { track, playlist, album, full }
 
 abstract final class AppSizes {
-  static const int miniAlbumArt = 48;
-  static const double miniAlbumArtD = 48.0;
-  static const int smallAlbumArt = 64;
-  static const double smallAlbumArtD = 64.0;
+  static const int trackAlbumArt = 48;
+  static const int playlistAlbumArt = 64;
+  static int albumAlbumArt = 512;
+  static int fullAlbumArt = 2024;
+
+  static int getSize(AlbumArtSize size) {
+    switch (size) {
+      case AlbumArtSize.track:
+        return trackAlbumArt;
+      case AlbumArtSize.playlist:
+        return playlistAlbumArt;
+      case AlbumArtSize.album:
+        return albumAlbumArt;
+      case AlbumArtSize.full:
+        return fullAlbumArt;
+    }
+  }
+
+  static double getSizeD(AlbumArtSize size) {
+    return getSize(size).toDouble();
+  }
 }

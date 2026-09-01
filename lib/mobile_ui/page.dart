@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
+import 'package:music_client/util/album_art.dart';
 import 'package:music_client/util/track_item.dart';
 
 import 'ui_state.dart';
@@ -137,7 +138,6 @@ class _PlaylistsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider);
-    final dpr = MediaQuery.of(context).devicePixelRatio;
 
     return _PageWidget(
       title: 'Playlists',
@@ -151,30 +151,10 @@ class _PlaylistsPage extends ConsumerWidget {
           itemCount: playlists.length,
           itemBuilder: (context, i) {
             final playlist = playlists[i];
-            final cover = ref.watch(
-              coverProvider(
-                CoverRequest.fromID(
-                  playlist.coverArt,
-                  (AppSizes.smallAlbumArt * dpr).ceil(),
-                ),
-              ),
-            );
             return ListTile(
-              leading: cover.when(
-                loading: () => const SizedBox(
-                  width: AppSizes.smallAlbumArtD,
-                  height: AppSizes.smallAlbumArtD,
-                  child: CircularProgressIndicator(
-                    color: AppColors.progressIndicators,
-                  ),
-                ),
-                error: (_, _) => const Icon(Icons.playlist_play),
-                data: (imageProvider) => Image(
-                  image: imageProvider,
-                  width: AppSizes.smallAlbumArtD,
-                  height: AppSizes.smallAlbumArtD,
-                  errorBuilder: (_, _, _) => const Icon(Icons.playlist_play),
-                ),
+              leading: AlbumArtWidget(
+                coverArt: playlist.coverArt,
+                size: AppSizes.playlistAlbumArt,
               ),
               title: Text(playlist.name),
               subtitle: Text('${playlist.songCount} songs'),
