@@ -42,13 +42,15 @@ final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
   return service.getPalette(req);
 });
 
-final albumListProvider = AsyncNotifierProvider<AlbumListNotifier, List<Album>>(
-  AlbumListNotifier.new,
-);
+final albumListProvider =
+    AsyncNotifierProvider<AlbumListNotifier, NetworkList<Album>>(
+      AlbumListNotifier.new,
+    );
 
-final topTracksProvider = AsyncNotifierProvider<TopTracksNotifier, List<Track>>(
-  TopTracksNotifier.new,
-);
+final topTracksProvider =
+    AsyncNotifierProvider<TopTracksNotifier, NetworkList<Track>>(
+      TopTracksNotifier.new,
+    );
 
 class CoverRequest {
   final String coverID;
@@ -163,7 +165,10 @@ class SubsonicService {
     return response;
   }
 
-  Future<List<Track>> getTopTracks({required int offset, int size = 50}) async {
+  Future<(List<Track>, int)> getTopTracks({
+    required int offset,
+    int size = 50,
+  }) async {
     final response = await _nativeGet('song', {
       '_sort': 'rating',
       '_order': 'DESC',
@@ -171,9 +176,14 @@ class SubsonicService {
       '_end': '${offset + size}',
     });
 
+    final totalCount = response.headers['x-total-count'];
+
     final body = utf8.decode(response.bodyBytes);
     final list = jsonDecode(body) as List<dynamic>;
-    return list.map((e) => Track.fromJson(e as Map<String, dynamic>)).toList();
+    return (
+      list.map((e) => Track.fromJson(e as Map<String, dynamic>)).toList(),
+      int.tryParse(totalCount ?? '0') ?? 0,
+    );
   }
 
   Future<List<Track>> getStarred() async {
@@ -238,7 +248,7 @@ class SubsonicService {
         .toList();
   }
 
-  Future<List<Album>> getAlbumList({
+  Future<(List<Album>, int)> getAlbumList({
     required int offset,
     int size = 50,
     String type = 'highest',
@@ -250,10 +260,14 @@ class SubsonicService {
         'size': '$size',
       }),
     );
+    final totalCount = response.headers['x-total-count'];
     final body = utf8.decode(response.bodyBytes);
-    return XmlDocument.parse(
-      body,
-    ).findAllElements('album').map(Album.fromXml).toList();
+    return (
+      XmlDocument.parse(
+        body,
+      ).findAllElements('album').map(Album.fromXml).toList(),
+      int.tryParse(totalCount ?? '0') ?? 0,
+    );
   }
 
   final HashMap<CoverRequest, ImageProvider> _coverCache = HashMap();
@@ -296,37 +310,108 @@ class SubsonicService {
   }
 }
 
-abstract class PaginatedNotifier<T> extends AsyncNotifier<List<T>> {
-  int get pageSize => 50;
-  bool hasMore = true;
-  bool _loading = false;
-
-  Future<List<T>> fetchPage(int offset, int size);
-
+class AlbumListNotifier extends NetworkListNotifier<Album> {
   @override
-  Future<List<T>> build() => fetchPage(0, pageSize);
-
-  Future<void> loadMore() async {
-    final current = state.value;
-    if (_loading || !hasMore || current == null) return;
-    _loading = true;
-    final next = await fetchPage(current.length, pageSize);
-    hasMore = next.length == pageSize;
-    state = AsyncData([...current, ...next]);
-    _loading = false;
-  }
-}
-
-class AlbumListNotifier extends PaginatedNotifier<Album> {
-  @override
-  Future<List<Album>> fetchPage(int offset, int size) => ref
+  Future<(List<Album>, int)> fetchPage(int offset, int size) => ref
       .read(subsonicServiceProvider)
       .getAlbumList(offset: offset, size: size);
 }
 
-class TopTracksNotifier extends PaginatedNotifier<Track> {
+class TopTracksNotifier extends NetworkListNotifier<Track> {
   @override
-  Future<List<Track>> fetchPage(int offset, int size) => ref
+  Future<(List<Track>, int)> fetchPage(int offset, int size) => ref
       .read(subsonicServiceProvider)
       .getTopTracks(offset: offset, size: size);
+}
+
+abstract class NetworkListNotifier<T> extends AsyncNotifier<NetworkList<T>> {
+  int get pageSize => 50;
+  final Set<int> _loading = {};
+
+  Future<(List<T>, int)> fetchPage(int offset, int size);
+
+  @override
+  Future<NetworkList<T>> build() {
+    return fetchPage(0, pageSize).then((value) {
+      final (items, totalCount) = value;
+      return NetworkList.fromInitialPage(
+        itemCount: totalCount,
+        pageSize: pageSize,
+        initialPage: items,
+        notifier: this,
+      );
+    });
+  }
+
+  Future<void> loadItem(int page) async {
+    final current = state.value;
+    assert(current != null);
+    if (current == null) return;
+    if (_loading.contains(page)) return;
+
+    _loading.add(page);
+
+    try {
+      final offset = page * pageSize;
+      final (items, totalCount) = await fetchPage(offset, pageSize);
+
+      final latest = state.value;
+      assert(latest != null);
+      if (latest == null) return;
+
+      state = AsyncData(latest.copyWithPage(page, items));
+    } finally {
+      _loading.remove(page);
+    }
+  }
+}
+
+@immutable
+class NetworkList<T> {
+  final int itemCount;
+  final int _pageSize;
+  final Map<int, List<T>> _pages;
+  final NetworkListNotifier<T> _notifier;
+
+  const NetworkList({
+    required this.itemCount,
+    required int pageSize,
+    required Map<int, List<T>> pages,
+    required NetworkListNotifier<T> notifier,
+  }) : _pageSize = pageSize,
+       _pages = pages,
+       _notifier = notifier;
+
+  NetworkList.fromInitialPage({
+    required this.itemCount,
+    required int pageSize,
+    required List<T> initialPage,
+    required NetworkListNotifier<T> notifier,
+  }) : _pageSize = pageSize,
+       _pages = {0: initialPage},
+       _notifier = notifier;
+
+  NetworkList<T> copyWithPage(int pageIndex, List<T> page) {
+    final newPages = Map<int, List<T>>.from(_pages);
+    newPages[pageIndex] = page;
+    return NetworkList<T>(
+      itemCount: itemCount,
+      pageSize: _pageSize,
+      pages: newPages,
+      notifier: _notifier,
+    );
+  }
+
+  T? operator [](int index) {
+    assert(index >= 0 && index < itemCount);
+    final pageIndex = index ~/ _pageSize;
+    final pageOffset = index % _pageSize;
+    final page = _pages[pageIndex];
+    if (page != null) assert(pageOffset < page.length);
+    if (page == null) {
+      _notifier.loadItem(pageIndex);
+      return null;
+    }
+    return page[pageOffset];
+  }
 }

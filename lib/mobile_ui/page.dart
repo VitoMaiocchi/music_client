@@ -111,45 +111,21 @@ class _TopTracksPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _PageWidget(title: 'Top Tracks', child: _TopTrackList());
-  }
-}
-
-class _TopTrackList extends ConsumerStatefulWidget {
-  const _TopTrackList();
-  @override
-  ConsumerState<_TopTrackList> createState() => _TopTrackListState();
-}
-
-class _TopTrackListState extends ConsumerState<_TopTrackList> {
-  final _controller = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      if (_controller.position.pixels >
-          _controller.position.maxScrollExtent - 300) {
-        ref.read(topTracksProvider.notifier).loadMore();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final tracks = ref.watch(topTracksProvider);
-    return tracks.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.progressIndicators),
-      ),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (tracks) => ListView.builder(
-        controller: _controller,
-        padding: EdgeInsets.zero,
-        itemCount: tracks.length,
-        itemBuilder: (context, i) {
-          return TrackWidget(tracks: TrackList(tracks), index: i);
-        },
+    return _PageWidget(
+      title: 'Top Tracks',
+      child: tracks.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (tracks) => ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: tracks.itemCount,
+          itemBuilder: (context, i) {
+            return TrackWidget(tracks: TopTracks(tracks), index: i);
+          },
+        ),
       ),
     );
   }
@@ -173,7 +149,7 @@ class _StarredTracksPage extends ConsumerWidget {
           padding: EdgeInsets.zero,
           itemCount: tracks.length,
           itemBuilder: (context, i) {
-            return TrackWidget(tracks: TrackList(tracks), index: i);
+            return TrackWidget(tracks: StarredTracks(tracks), index: i);
           },
         ),
       ),
@@ -244,45 +220,25 @@ class _AlbumListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _PageWidget(title: 'Albums', child: _AlbumGrid());
-  }
-}
-
-class _AlbumGrid extends ConsumerStatefulWidget {
-  const _AlbumGrid();
-  @override
-  ConsumerState<_AlbumGrid> createState() => _AlbumGridState();
-}
-
-class _AlbumGridState extends ConsumerState<_AlbumGrid> {
-  final _controller = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      if (_controller.position.pixels >
-          _controller.position.maxScrollExtent - 300) {
-        ref.read(albumListProvider.notifier).loadMore();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final albums = ref
-        .watch(albumListProvider)
-        .when(loading: () => [], error: (e, _) => [], data: (albums) => albums);
-    return GridView.builder(
-      controller: _controller,
-      itemCount: albums.length,
-      itemBuilder: (_, i) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Center(child: AlbumArtWidget(coverArt: albums[i].coverArt)),
-      ),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 1.0,
+    final albums = ref.watch(albumListProvider);
+    return _PageWidget(
+      title: 'Albums',
+      child: albums.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (albums) => GridView.builder(
+          itemCount: albums.itemCount,
+          itemBuilder: (_, i) => Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Center(child: AlbumArtWidget(coverArt: albums[i]?.coverArt)),
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 1.0,
+          ),
+        ),
       ),
     );
   }

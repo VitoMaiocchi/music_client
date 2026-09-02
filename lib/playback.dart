@@ -121,30 +121,63 @@ class Album {
 }
 
 @immutable
-class TrackList {
-  final List<Track> tracks;
-
-  const TrackList(this.tracks);
+abstract class TrackList {
+  Track? operator [](int index);
+  int get length;
 }
 
-class StarredTracks extends TrackList {
-  const StarredTracks(super.tracks);
+@immutable
+class SimpleTrackList extends TrackList {
+  final List<Track> _tracks;
+
+  SimpleTrackList(this._tracks);
+
+  @override
+  Track operator [](int index) => _tracks[index];
+
+  @override
+  int get length => _tracks.length;
 }
 
-class AlbumTracks extends TrackList {
+@immutable
+class StarredTracks extends SimpleTrackList {
+  StarredTracks(super.tracks);
+}
+
+@immutable
+class TopTracks extends TrackList {
+  final NetworkList<Track> _tracks;
+
+  TopTracks(this._tracks);
+
+  @override
+  Track? operator [](int index) => _tracks[index];
+
+  @override
+  int get length => _tracks.itemCount;
+}
+
+@immutable
+class AlbumTracks extends SimpleTrackList {
   final String albumId;
 
-  const AlbumTracks(super.tracks, {required this.albumId});
+  AlbumTracks(super.tracks, {required this.albumId});
 }
 
-class PlaylistTracks extends TrackList {
+@immutable
+class PlaylistTracks extends SimpleTrackList {
   final String playlistId;
 
-  const PlaylistTracks(super.tracks, {required this.playlistId});
+  PlaylistTracks(super.tracks, {required this.playlistId});
 }
 
+@immutable
 class EmptyTrackList extends TrackList {
-  const EmptyTrackList() : super(const []);
+  @override
+  Track operator [](int index) => throw RangeError('Index out of range');
+
+  @override
+  int get length => 0;
 }
 
 @immutable
@@ -166,7 +199,7 @@ class Queue {
 
   Queue()
     : _previousQueue = null,
-      _source = const EmptyTrackList(),
+      _source = EmptyTrackList(),
       _queueEntries = [],
       _current = 0,
       _userQueueEnd = 0;
@@ -189,20 +222,20 @@ class Queue {
   }
 
   // Returns track at index relative to current Track and its uuid. Returns null if index is out of bounds.
-  (Track, String)? operator [](int index) {
+  (Track?, String)? operator [](int index) {
     int queueIndex = _current + index;
     if (queueIndex < 0 || queueIndex >= _queueEntries.length) return null;
     final entry = _queueEntries[queueIndex];
     if (entry.track != null) {
       return (entry.track!, entry.uuid);
     } else {
-      return (_source.tracks[entry.position!], entry.uuid);
+      return (_source[entry.position!], entry.uuid);
     }
   }
 
   Queue setSource(TrackList newSource, int current) {
     final newQueueEntries = List.generate(
-      newSource.tracks.length,
+      newSource.length,
       (i) => _QueueEntry(null, i, const Uuid().v4()),
     );
     return Queue._internal(
@@ -316,17 +349,19 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
     final current = next[0];
     if (current == null) return;
     if (current.$2 == previous?[0]?.$2) return;
+    if (current.$1 == null) return;
+    final track = current.$1!;
 
     playbackService.mediaItem.add(
       MediaItem(
         id: current.$2,
-        title: current.$1.title,
-        artist: current.$1.artist,
-        artUri: SubsonicService().getCoverUri(current.$1.coverArt, 1000),
+        title: track.title,
+        artist: track.artist,
+        artUri: SubsonicService().getCoverUri(track.coverArt, 1000),
       ),
     );
 
-    ref.read(audioSourceProvider(current.$1).future).then((source) async {
+    ref.read(audioSourceProvider(track).future).then((source) async {
       await playbackService.player.setAudioSource(source);
       await playbackService.play();
     });

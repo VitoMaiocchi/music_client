@@ -15,12 +15,14 @@ class TrackWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final track = tracks.tracks[index];
+    final track = tracks[index];
 
     return SwipeableTile(
-      onSwipe: () => ref.read(queueProvider.notifier).add(track),
+      onSwipe: () => {
+        if (track != null) ref.read(queueProvider.notifier).add(track),
+      },
       color:
-          getPrimaryColor(track.coverArt, context, ref) ??
+          getPrimaryColor(track?.coverArt, context, ref) ??
           AppColors.accentFallback,
       child: InkWell(
         onTap: () => {
@@ -36,7 +38,7 @@ class TrackWidget extends ConsumerWidget {
               SizedBox(
                 width: _size.toDouble(),
                 height: _size.toDouble(),
-                child: AlbumArtWidget(coverArt: track.coverArt, size: _size),
+                child: AlbumArtWidget(coverArt: track?.coverArt, size: _size),
               ),
               Expanded(
                 child: Padding(
@@ -45,13 +47,13 @@ class TrackWidget extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        track.title,
+                        track?.title ?? '',
                         style: AppTextStyles.listTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        track.artist,
+                        track?.artist ?? '',
                         style: AppTextStyles.listSubtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
