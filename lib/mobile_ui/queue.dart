@@ -5,7 +5,6 @@ import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
 
-// Named record used as a flat item descriptor for the ReorderableListView.
 typedef _ListItem = ({
   Key key,
   int? relative, // 1-based relative to current; null for non-track rows
@@ -39,6 +38,10 @@ class QueueWidget extends ConsumerWidget {
     final apCount = (queueSize - relUserQueueEnd).clamp(0, queueSize);
 
     // ── Build the flat item list ───────────────────────────────────────────────
+    // Keys use getKeyAtPosition, which is a pure metadata lookup — safe to call
+    // for every index without forcing a network fetch. Track data itself is
+    // only ever pulled via queue[i] inside itemBuilder, which Flutter only
+    // invokes for items near the viewport.
     final items = <_ListItem>[];
 
     // Now Playing
@@ -49,13 +52,13 @@ class QueueWidget extends ConsumerWidget {
       isCurrent: false,
     ));
     items.add((
-      key: ValueKey('t:current:${queue[0]?.$2}'),
+      key: ValueKey('t:${queue.getKeyAtPosition(0)}'),
       relative: null,
       section: null,
       isCurrent: true,
     ));
 
-    // Next Up  (user queue)
+    // Next Up (user queue)
     if (uqCount > 0) {
       items.add((
         key: const ValueKey('h:next_up'),
@@ -64,15 +67,12 @@ class QueueWidget extends ConsumerWidget {
         isCurrent: false,
       ));
       for (var i = 1; i <= uqCount; i++) {
-        final t = queue[i];
-        if (t != null) {
-          items.add((
-            key: ValueKey('t:${t.$2}'),
-            relative: i,
-            section: null,
-            isCurrent: false,
-          ));
-        }
+        items.add((
+          key: ValueKey('t:${queue.getKeyAtPosition(i)}'),
+          relative: i,
+          section: null,
+          isCurrent: false,
+        ));
       }
     }
 
@@ -85,15 +85,12 @@ class QueueWidget extends ConsumerWidget {
         isCurrent: false,
       ));
       for (var i = relUserQueueEnd; i < queueSize; i++) {
-        final t = queue[i];
-        if (t != null) {
-          items.add((
-            key: ValueKey('t:${t.$2}'),
-            relative: i,
-            section: null,
-            isCurrent: false,
-          ));
-        }
+        items.add((
+          key: ValueKey('t:${queue.getKeyAtPosition(i)}'),
+          relative: i,
+          section: null,
+          isCurrent: false,
+        ));
       }
     }
 
@@ -137,11 +134,14 @@ class QueueWidget extends ConsumerWidget {
             }
 
             if (item.isCurrent) {
-              return _CurrentTrackTile(key: item.key, track: queue[0]?.$1);
+              final (track, _) = queue[0];
+              return _CurrentTrackTile(key: item.key, track: track);
             }
 
-            final track = queue[item.relative!]?.$1;
-            if (track == null) return SizedBox.shrink(key: item.key);
+            // Lazy: only pulled for items Flutter actually builds
+            // (visible range + cacheExtent). Track may be null while
+            // still loading — the tile handles that with a placeholder.
+            final (track, _) = queue[item.relative!];
 
             return _QueueTrackTile(
               key: item.key,
@@ -231,7 +231,7 @@ class _CurrentTrackTile extends StatelessWidget {
 }
 
 class _QueueTrackTile extends StatelessWidget {
-  final Track track;
+  final Track? track;
   final int listIndex;
   final ValueNotifier<bool> isReordering;
 
@@ -246,17 +246,17 @@ class _QueueTrackTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: AlbumArtWidget(
-        coverArt: track.coverArt,
+        coverArt: track?.coverArt,
         size: AppSizes.trackAlbumArt,
       ),
       title: Text(
-        track.title,
+        track?.title ?? 'loading title...',
         style: const TextStyle(color: Colors.white),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        track.artist,
+        track?.artist ?? '',
         style: const TextStyle(color: Colors.white70),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

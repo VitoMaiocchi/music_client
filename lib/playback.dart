@@ -221,10 +221,15 @@ class Queue {
     );
   }
 
-  // Returns track at index relative to current Track and its uuid. Returns null if index is out of bounds.
-  (Track?, String)? operator [](int index) {
+  String getKeyAtPosition(int index) {
     int queueIndex = _current + index;
-    if (queueIndex < 0 || queueIndex >= _queueEntries.length) return null;
+    assert(queueIndex >= 0 && queueIndex < _queueEntries.length);
+    return _queueEntries[queueIndex].uuid;
+  }
+
+  (Track?, String) operator [](int index) {
+    int queueIndex = _current + index;
+    assert(queueIndex >= 0 && queueIndex < _queueEntries.length);
     final entry = _queueEntries[queueIndex];
     if (entry.track != null) {
       return (entry.track!, entry.uuid);
@@ -346,9 +351,12 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
   ref.listen(queueProvider, (previous, next) {
     if (previous == next) return;
 
+    if (next.size().$2 <= 0) return;
     final current = next[0];
-    if (current == null) return;
-    if (current.$2 == previous?[0]?.$2) return;
+    final previousID = previous != null
+        ? (previous.size().$2 > 0 ? previous[0].$2 : null)
+        : null;
+    if (current.$2 == previousID) return;
     if (current.$1 == null) return;
     final track = current.$1!;
 

@@ -20,7 +20,7 @@ class Player extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
-    final track = queue[0]?.$1;
+    final track = queue.size().$2 > 0 ? queue[0].$1 : null;
     final position = ref
         .watch(positionProvider)
         .maybeWhen(data: (value) => value, orElse: () => Duration.zero);
@@ -219,7 +219,7 @@ class _Expanded extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).viewPadding.top;
 
-    final track = queue[0]?.$1;
+    final track = queue.size().$2 > 0 ? queue[0].$1 : null;
     final color = getPrimaryColor(track?.coverArt, context, ref);
 
     return AnimatedSwitcher(
