@@ -1,3 +1,6 @@
+// ignore_for_file: unused_element_parameter
+// TODO: remove the above ignore when the unused parameter is used in the future
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';

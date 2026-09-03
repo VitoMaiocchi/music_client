@@ -30,12 +30,24 @@ class AlbumArtWidget extends ConsumerWidget {
         .maybeWhen(data: (c) => c, orElse: () => null);
 
     final lowres = coverLow != null
-        ? Image(
-            key: const ValueKey('lowres'),
-            image: coverLow,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-            errorBuilder: (_, _, _) => _fallbackCover,
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(child: _fallbackCover),
+              Image(
+                key: const ValueKey('lowres'),
+                image: coverLow,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                frameBuilder: (context, child, frame, wasSyncLoaded) {
+                  if (frame == null && !wasSyncLoaded) {
+                    return _fallbackCover;
+                  }
+                  return child;
+                },
+                errorBuilder: (_, _, _) => _fallbackCover,
+              ),
+            ],
           )
         : _fallbackCover;
 
@@ -68,25 +80,34 @@ class AlbumArtWidget extends ConsumerWidget {
       width: size.toDouble(),
       height: size.toDouble(),
       child: coverHigh != null
-          ? Image(
-              image: coverHigh,
-              fit: BoxFit.cover,
-              frameBuilder: (context, child, frame, wasSyncLoaded) {
-                return AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 120),
-                  layoutBuilder: (current, previous) => Stack(
-                    fit: StackFit.expand,
-                    children: [...previous, ?current],
-                  ),
-                  child: frame == null && !wasSyncLoaded
-                      ? KeyedSubtree(
-                          key: const ValueKey('low'),
-                          child: blurredLowres,
-                        )
-                      : KeyedSubtree(key: const ValueKey('high'), child: child),
-                );
-              },
-              errorBuilder: (_, _, _) => blurredLowres,
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(child: _fallbackCover),
+                Image(
+                  image: coverHigh,
+                  fit: BoxFit.cover,
+                  frameBuilder: (context, child, frame, wasSyncLoaded) {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 120),
+                      layoutBuilder: (current, previous) => Stack(
+                        fit: StackFit.expand,
+                        children: [...previous, ?current],
+                      ),
+                      child: frame == null && !wasSyncLoaded
+                          ? KeyedSubtree(
+                              key: const ValueKey('low'),
+                              child: blurredLowres,
+                            )
+                          : KeyedSubtree(
+                              key: const ValueKey('high'),
+                              child: child,
+                            ),
+                    );
+                  },
+                  errorBuilder: (_, _, _) => blurredLowres,
+                ),
+              ],
             )
           : blurredLowres,
     );
