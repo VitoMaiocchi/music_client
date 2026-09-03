@@ -273,7 +273,6 @@ class _Expanded extends StatelessWidget {
               GestureDetector(
                 onTap: () {
                   if (track == null) return;
-                  print("touch ${track?.artistId}");
                   final navi = ref.read(appNavigationProvider.notifier);
                   navi.pushPage(page: AppPageArtist(artistId: track!.artistId));
                   navi.setPlayerState(PlayerState.collapsed);

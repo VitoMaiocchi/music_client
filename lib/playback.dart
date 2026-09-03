@@ -55,7 +55,7 @@ class Track extends ObjectProvider<Track> {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       artist: json['artist'] as String? ?? '',
-      artistId: json['artist'] as String? ?? '',
+      artistId: json['artistId'] as String? ?? '',
       // Navidrome serves cover art by track id when the track has embedded art
       coverArt: hasCoverArt ? (json['id'] as String? ?? '') : '',
     );
