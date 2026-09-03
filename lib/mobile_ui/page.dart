@@ -1,6 +1,8 @@
 // ignore_for_file: unused_element_parameter
 // TODO: remove the above ignore when the unused parameter is used in the future
 
+// NOTE: THIS IS ALL UGLY PLACE HOLDER UI IT WILL BE REPLACED
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend.dart';
@@ -90,7 +92,7 @@ Widget buildPage(AppPage page) {
     case AppPageAlbum():
       return const _PagePlaceholder('Album');
     case AppPagePlaylist():
-      return const _PagePlaceholder('Playlist');
+      return _PlaylistPage(page.playlistId);
     case AppPageArtist():
       return const _PagePlaceholder('Artist');
   }
@@ -157,6 +159,71 @@ class _StarredTracksPage extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _CoverArtTrackList extends StatelessWidget {
+  final List<Track> tracks;
+  final String coverArt;
+
+  const _CoverArtTrackList({required this.tracks, required this.coverArt});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.black,
+          expandedHeight: 330,
+          toolbarHeight: 0,
+          pinned: false,
+          floating: false,
+          flexibleSpace: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: AlbumArtWidget(coverArt: coverArt, size: 322),
+              ),
+            ),
+          ),
+        ),
+        SliverList(
+          delegate: SliverChildBuilderDelegate((context, i) {
+            return TrackWidget(tracks: StarredTracks(tracks), index: i);
+          }, childCount: tracks.length),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlaylistPage extends ConsumerWidget {
+  final String playlistId;
+  const _PlaylistPage(this.playlistId);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final value = ref.watch(playlistProvider(playlistId)).value;
+
+    if (value == null) {
+      return _PageWidget(
+        title: '...',
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+      );
+    }
+
+    final tracks = value.tracks;
+    final name = value.name;
+    final coverArt = value.coverArt;
+
+    return _PageWidget(
+      title: name,
+      child: _CoverArtTrackList(tracks: tracks, coverArt: coverArt),
     );
   }
 }
