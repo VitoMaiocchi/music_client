@@ -150,6 +150,14 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
 
         final player = GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onTap: () {
+            final currentState = ref.read(appNavigationProvider).playerState;
+            if (currentState != PlayerState.expanded) {
+              ref
+                  .read(appNavigationProvider.notifier)
+                  .setPlayerState(PlayerState.expanded);
+            }
+          },
           onVerticalDragUpdate: (d) {
             _controller.value -= d.delta.dy / miniPlayerGrowth;
           },

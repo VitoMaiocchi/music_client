@@ -93,6 +93,16 @@ class AppNavigation extends Notifier<AppNavigationState> {
     }
     state = state.copyWith(pageStack: [...state.pageStack, page]);
   }
+
+  void popPage() {
+    if (state.pageStack.length <= 1) {
+      return;
+    }
+
+    state = state.copyWith(
+      pageStack: state.pageStack.sublist(0, state.pageStack.length - 1),
+    );
+  }
 }
 
 final appNavigationProvider =

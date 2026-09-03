@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/mobile_ui/home_screen.dart';
+import 'package:music_client/mobile_ui/ui_state.dart';
 import 'package:music_client/playback.dart';
 
 void main() async {
@@ -22,11 +23,11 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -39,7 +40,31 @@ class MyApp extends StatelessWidget {
       ),
       child: MaterialApp(
         title: 'Music Client',
-        home: Scaffold(body: HomeScreenMobile()),
+        home: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+
+            final state = ref.read(appNavigationProvider);
+            final navigation = ref.read(appNavigationProvider.notifier);
+
+            if (state.playerState == PlayerState.queue) {
+              navigation.setPlayerState(PlayerState.expanded);
+              return;
+            }
+
+            if (state.playerState == PlayerState.expanded) {
+              navigation.setPlayerState(PlayerState.collapsed);
+              return;
+            }
+
+            if (state.pageStack.length > 1) {
+              navigation.popPage();
+              return;
+            }
+          },
+          child: const Scaffold(body: HomeScreenMobile()),
+        ),
       ),
     );
   }
