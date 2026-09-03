@@ -92,7 +92,7 @@ Widget buildPage(AppPage page) {
     case AppPageAlbum():
       return const _PagePlaceholder('Album');
     case AppPagePlaylist():
-      return _PlaylistPage(page.playlistId);
+      return _PlaylistPage(page.playlist);
     case AppPageArtist():
       return const _PagePlaceholder('Artist');
   }
@@ -201,29 +201,25 @@ class _CoverArtTrackList extends StatelessWidget {
 }
 
 class _PlaylistPage extends ConsumerWidget {
-  final String playlistId;
-  const _PlaylistPage(this.playlistId);
+  final Playlist playlist;
+  const _PlaylistPage(this.playlist);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(playlistProvider(playlistId)).value;
+    final tracks = ref.watch(playlistProvider(playlist.id)).value;
 
-    if (value == null) {
+    if (tracks == null) {
       return _PageWidget(
-        title: '...',
+        title: playlist.name,
         child: const Center(
           child: CircularProgressIndicator(color: AppColors.progressIndicators),
         ),
       );
     }
 
-    final tracks = value.tracks;
-    final name = value.name;
-    final coverArt = value.coverArt;
-
     return _PageWidget(
-      title: name,
-      child: _CoverArtTrackList(tracks: tracks, coverArt: coverArt),
+      title: playlist.name,
+      child: _CoverArtTrackList(tracks: tracks, coverArt: playlist.coverArt),
     );
   }
 }
@@ -276,7 +272,7 @@ class _PlaylistsPage extends ConsumerWidget {
               onTap: () {
                 ref
                     .read(appNavigationProvider.notifier)
-                    .pushPage(page: AppPagePlaylist(playlistId: playlist.id));
+                    .pushPage(page: AppPagePlaylist(playlist: playlist));
               },
             );
           },

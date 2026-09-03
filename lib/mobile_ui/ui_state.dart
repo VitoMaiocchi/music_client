@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:music_client/playback.dart';
 
 enum PlayerState { collapsed, expanded, queue }
 
@@ -30,16 +31,16 @@ class AppPageSearch extends AppPage {
 
 @immutable
 class AppPageAlbum extends AppPage {
-  final String albumId;
+  final Album album;
 
-  const AppPageAlbum({required this.albumId});
+  const AppPageAlbum({required this.album});
 }
 
 @immutable
 class AppPagePlaylist extends AppPage {
-  final String playlistId;
+  final Playlist playlist;
 
-  const AppPagePlaylist({required this.playlistId});
+  const AppPagePlaylist({required this.playlist});
 }
 
 @immutable

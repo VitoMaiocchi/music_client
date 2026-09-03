@@ -35,13 +35,12 @@ final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
   return ref.read(subsonicServiceProvider).getPlaylists();
 });
 
-final playlistProvider =
-    FutureProvider.family<
-      ({List<Track> tracks, String name, String coverArt}),
-      String
-    >((ref, id) async {
-      return ref.read(subsonicServiceProvider).getPlaylist(id);
-    });
+final playlistProvider = FutureProvider.family<List<Track>, String>((
+  ref,
+  id,
+) async {
+  return ref.read(subsonicServiceProvider).getPlaylist(id);
+});
 
 final albumListProvider = FutureProvider<NetworkList<Album>>((ref) async {
   final (albums, totalCount) = await ref
@@ -277,9 +276,7 @@ class SubsonicService {
         .toList();
   }
 
-  Future<({List<Track> tracks, String name, String coverArt})> getPlaylist(
-    String id,
-  ) async {
+  Future<List<Track>> getPlaylist(String id) async {
     final response = await http.get(_buildUri('getPlaylist', {'id': id}));
 
     if (response.statusCode != 200) {
@@ -290,9 +287,7 @@ class SubsonicService {
     return _parsePlaylistTracks(body);
   }
 
-  ({List<Track> tracks, String name, String coverArt}) _parsePlaylistTracks(
-    String xmlBody,
-  ) {
+  List<Track> _parsePlaylistTracks(String xmlBody) {
     final document = XmlDocument.parse(xmlBody);
 
     final status = document
@@ -306,15 +301,9 @@ class SubsonicService {
     }
 
     final playlist = document.findAllElements('playlist').firstOrNull;
-    if (playlist == null) {
-      return (tracks: const <Track>[], name: '', coverArt: '');
-    }
+    if (playlist == null) return const <Track>[];
 
-    return (
-      tracks: playlist.findElements('entry').map(Track.fromXml).toList(),
-      name: playlist.getAttribute('name') ?? '',
-      coverArt: playlist.getAttribute('coverArt') ?? '',
-    );
+    return playlist.findElements('entry').map(Track.fromXml).toList();
   }
 
   Future<(List<Album>, int)> getAlbumList({
