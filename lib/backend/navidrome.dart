@@ -20,38 +20,31 @@ String get _password => dotenv.env['SUBSONIC_PASSWORD']!;
 String? _jwtToken;
 Future<String>? _loginFuture;
 
-Future<String> _login() {
-  return _loginFuture ??= _performLogin();
-}
+Future<String> _ensureToken() =>
+    _jwtToken != null ? Future.value(_jwtToken) : (_loginFuture ??= _login());
 
-Future<String> _performLogin() async {
+Future<String> _login() async {
   final response = await http.post(
     Uri.parse('$_baseUrl/auth/login'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'username': _user, 'password': _password}),
   );
 
-  if (response.statusCode != 200) {
-    _loginFuture = null;
-    throw Exception('Navidrome login failed: HTTP ${response.statusCode}');
-  }
+  final json = response.statusCode == 200
+      ? jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>
+      : null;
+  final token = json?['token'] as String?;
 
-  final json =
-      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-  final token = json['token'] as String?;
   if (token == null || token.isEmpty) {
     _loginFuture = null;
-    throw Exception('Navidrome login response missing token');
+    throw Exception(
+      response.statusCode != 200
+          ? 'Navidrome login failed: HTTP ${response.statusCode}'
+          : 'Navidrome login response missing token',
+    );
   }
 
-  _jwtToken = token;
-  return token;
-}
-
-Future<String> _ensureToken() async {
-  final token = _jwtToken;
-  if (token != null) return token;
-  return _login();
+  return _jwtToken = token;
 }
 
 void _captureRotatedToken(http.Response response) {
@@ -103,9 +96,8 @@ Future<(List<Track>, int)> getTopTracks({
   });
 
   final totalCount = response.headers['x-total-count'];
+  final list = jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
 
-  final body = utf8.decode(response.bodyBytes);
-  final list = jsonDecode(body) as List<dynamic>;
   return (
     list.map((e) => Track.fromJson(e as Map<String, dynamic>)).toList(),
     int.tryParse(totalCount ?? '0') ?? 0,

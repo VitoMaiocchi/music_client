@@ -28,21 +28,16 @@ Uri _buildUri(String endpoint, [Map<String, String>? extraParams]) {
   return Uri.parse('$_baseUrl/rest/$endpoint').replace(queryParameters: params);
 }
 
-Future<List<Track>> getStarred() async {
-  final response = await http.get(_buildUri('getStarred'));
-
+Future<XmlDocument> _fetchXml(
+  String endpoint, [
+  Map<String, String>? params,
+]) async {
+  final response = await http.get(_buildUri(endpoint, params));
   if (response.statusCode != 200) {
     throw Exception('HTTP ${response.statusCode}');
   }
 
-  final body = utf8.decode(response.bodyBytes);
-  return _parseStarredTracks(body);
-}
-
-List<Track> _parseStarredTracks(String xmlBody) {
-  final document = XmlDocument.parse(xmlBody);
-
-  // check for subsonic error
+  final document = XmlDocument.parse(utf8.decode(response.bodyBytes));
   final status = document
       .findAllElements('subsonic-response')
       .first
@@ -53,68 +48,23 @@ List<Track> _parseStarredTracks(String xmlBody) {
     throw Exception('Subsonic error: ${error.getAttribute('message')}');
   }
 
-  return document
-      .findAllElements('song')
-      .map((element) => Track.fromXml(element))
-      .toList();
+  return document;
+}
+
+Future<List<Track>> getStarred() async {
+  final document = await _fetchXml('getStarred');
+  return document.findAllElements('song').map(Track.fromXml).toList();
 }
 
 Future<List<Playlist>> getPlaylists() async {
-  final response = await http.get(_buildUri('getPlaylists'));
-
-  if (response.statusCode != 200) {
-    throw Exception('HTTP ${response.statusCode}');
-  }
-
-  final body = utf8.decode(response.bodyBytes);
-  return _parsePlaylists(body);
-}
-
-List<Playlist> _parsePlaylists(String xmlBody) {
-  final document = XmlDocument.parse(xmlBody);
-
-  // check for subsonic error
-  final status = document
-      .findAllElements('subsonic-response')
-      .first
-      .getAttribute('status');
-
-  if (status != 'ok') {
-    final error = document.findAllElements('error').first;
-    throw Exception('Subsonic error: ${error.getAttribute('message')}');
-  }
-
-  return document
-      .findAllElements('playlist')
-      .map((element) => Playlist.fromXml(element))
-      .toList();
+  final document = await _fetchXml('getPlaylists');
+  return document.findAllElements('playlist').map(Playlist.fromXml).toList();
 }
 
 Future<(Playlist, List<Track>)> getPlaylist(String id) async {
-  final response = await http.get(_buildUri('getPlaylist', {'id': id}));
-
-  if (response.statusCode != 200) {
-    throw Exception('HTTP ${response.statusCode}');
-  }
-
-  final body = utf8.decode(response.bodyBytes);
-  return _parsePlaylistTracks(body);
-}
-
-(Playlist, List<Track>) _parsePlaylistTracks(String xmlBody) {
-  final document = XmlDocument.parse(xmlBody);
-
-  final status = document
-      .findAllElements('subsonic-response')
-      .first
-      .getAttribute('status');
-
-  if (status != 'ok') {
-    final error = document.findAllElements('error').first;
-    throw Exception('Subsonic error: ${error.getAttribute('message')}');
-  }
-
+  final document = await _fetchXml('getPlaylist', {'id': id});
   final playlist = document.findAllElements('playlist').firstOrNull;
+
   if (playlist == null) {
     return (
       Playlist(
@@ -135,30 +85,9 @@ Future<(Playlist, List<Track>)> getPlaylist(String id) async {
 }
 
 Future<(Album, List<Track>)> getAlbumTracks(String id) async {
-  final response = await http.get(_buildUri('getAlbum', {'id': id}));
-
-  if (response.statusCode != 200) {
-    throw Exception('HTTP ${response.statusCode}');
-  }
-
-  final body = utf8.decode(response.bodyBytes);
-  return _parseAlbumTracks(body);
-}
-
-(Album, List<Track>) _parseAlbumTracks(String xmlBody) {
-  final document = XmlDocument.parse(xmlBody);
-
-  final status = document
-      .findAllElements('subsonic-response')
-      .first
-      .getAttribute('status');
-
-  if (status != 'ok') {
-    final error = document.findAllElements('error').first;
-    throw Exception('Subsonic error: ${error.getAttribute('message')}');
-  }
-
+  final document = await _fetchXml('getAlbum', {'id': id});
   final album = document.findAllElements('album').firstOrNull;
+
   if (album == null) {
     return (
       Album(
@@ -180,34 +109,11 @@ Future<(Album, List<Track>)> getAlbumTracks(String id) async {
 }
 
 Future<Artist> getArtist(String id) async {
-  final response = await http.get(_buildUri('getArtist', {'id': id}));
-
-  if (response.statusCode != 200) {
-    throw Exception('HTTP ${response.statusCode}');
-  }
-
-  final body = utf8.decode(response.bodyBytes);
-  return _parseArtist(body);
-}
-
-Artist _parseArtist(String xmlBody) {
-  final document = XmlDocument.parse(xmlBody);
-
-  final status = document
-      .findAllElements('subsonic-response')
-      .first
-      .getAttribute('status');
-
-  if (status != 'ok') {
-    final error = document.findAllElements('error').first;
-    throw Exception('Subsonic error: ${error.getAttribute('message')}');
-  }
-
+  final document = await _fetchXml('getArtist', {'id': id});
   final artist = document.findAllElements('artist').firstOrNull;
-  if (artist == null)
-    return Artist(id: '', name: '', coverArt: '', albums: const []);
-
-  return Artist.fromXml(artist);
+  return artist == null
+      ? Artist(id: '', name: '', coverArt: '', albums: const [])
+      : Artist.fromXml(artist);
 }
 
 Future<(List<Album>, int)> getAlbumList({
@@ -242,9 +148,7 @@ Future<ImageProvider> getCover(CoverRequest req) async {
       if (req.size != null) 'size': req.size.toString(),
     };
 
-    final uri = _buildUri('getCoverArt', params);
-    final image = NetworkImage(uri.toString());
-    return image;
+    return NetworkImage(_buildUri('getCoverArt', params).toString());
   });
 }
 
@@ -256,9 +160,8 @@ Future<PaletteGenerator> getPalette(CoverRequest req) async {
 }
 
 Future<AudioSource> getAudioSource(String trackId) async {
-  final params = {'id': trackId};
-  final uri = _buildUri('stream', params);
-  return AudioSource.uri(Uri.parse(uri.toString()));
+  final uri = _buildUri('stream', {'id': trackId});
+  return AudioSource.uri(uri);
 }
 
 Uri getCoverUri(String coverArtId, [int? size]) {
