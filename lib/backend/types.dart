@@ -11,6 +11,7 @@ class Track extends ObjectProvider<Track> {
   final String artist;
   final String coverArt;
   final String artistId;
+  final String albumId;
 
   const Track({
     required this.id,
@@ -18,6 +19,7 @@ class Track extends ObjectProvider<Track> {
     required this.artist,
     required this.coverArt,
     required this.artistId,
+    required this.albumId,
   });
 
   factory Track.fromXml(XmlElement element) {
@@ -27,6 +29,7 @@ class Track extends ObjectProvider<Track> {
       artist: element.getAttribute('artist') ?? '',
       coverArt: element.getAttribute('coverArt') ?? '',
       artistId: element.getAttribute('artistId') ?? '',
+      albumId: element.getAttribute('albumId') ?? '',
     );
   }
 
@@ -37,6 +40,7 @@ class Track extends ObjectProvider<Track> {
       title: json['title'] as String? ?? '',
       artist: json['artist'] as String? ?? '',
       artistId: json['artistId'] as String? ?? '',
+      albumId: json['albumId'] as String? ?? '',
       // Navidrome serves cover art by track id when the track has embedded art
       coverArt: hasCoverArt ? (json['id'] as String? ?? '') : '',
     );

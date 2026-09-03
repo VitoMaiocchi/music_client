@@ -261,12 +261,20 @@ class _Expanded extends StatelessWidget {
                 ),
               ),
 
-              Text(
-                track?.title ?? 'Nothing playing',
-                style: AppTextStyles.playerTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+              GestureDetector(
+                onTap: () {
+                  if (track == null) return;
+                  final navi = ref.read(appNavigationProvider.notifier);
+                  navi.pushPage(page: AppPageAlbum(albumId: track!.albumId));
+                  navi.setPlayerState(PlayerState.collapsed);
+                },
+                child: Text(
+                  track?.title ?? 'Nothing playing',
+                  style: AppTextStyles.playerTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: 4),
 

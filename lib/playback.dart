@@ -4,7 +4,6 @@ import 'package:music_client/backend/backend.dart';
 import 'package:music_client/backend/types.dart';
 import 'package:music_client/backend/network_objects.dart';
 import 'package:uuid/uuid.dart';
-import 'package:xml/xml.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

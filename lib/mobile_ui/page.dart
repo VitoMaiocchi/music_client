@@ -91,9 +91,9 @@ Widget buildPage(AppPage page) {
     case AppPageStarredTracks():
       return const _StarredTracksPage();
     case AppPageAlbum():
-      return _AlbumPage(page.album);
+      return _AlbumPage(page.albumId);
     case AppPagePlaylist():
-      return _PlaylistPage(page.playlist);
+      return _PlaylistPage(page.playlistId);
     case AppPageArtist():
       return _ArtistPage(page.artistId);
   }
@@ -202,21 +202,24 @@ class _CoverArtTrackList extends StatelessWidget {
 }
 
 class _PlaylistPage extends ConsumerWidget {
-  final Playlist playlist;
-  const _PlaylistPage(this.playlist);
+  final String playlistId;
+  const _PlaylistPage(this.playlistId);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(playlistProvider(playlist.id)).value;
+    final value = ref.watch(playlistProvider(playlistId)).value;
 
-    if (tracks == null) {
+    if (value == null) {
       return _PageWidget(
-        title: playlist.name,
+        title: "loading ...",
         child: const Center(
           child: CircularProgressIndicator(color: AppColors.progressIndicators),
         ),
       );
     }
+
+    final playlist = value.$1;
+    final tracks = value.$2;
 
     return _PageWidget(
       title: playlist.name,
@@ -226,21 +229,24 @@ class _PlaylistPage extends ConsumerWidget {
 }
 
 class _AlbumPage extends ConsumerWidget {
-  final Album album;
-  const _AlbumPage(this.album);
+  final String albumId;
+  const _AlbumPage(this.albumId);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(albumTracksProvider(album.id)).value;
+    final value = ref.watch(albumTracksProvider(albumId)).value;
 
-    if (tracks == null) {
+    if (value == null) {
       return _PageWidget(
-        title: album.name,
+        title: "loading ...",
         child: const Center(
           child: CircularProgressIndicator(color: AppColors.progressIndicators),
         ),
       );
     }
+
+    final album = value.$1;
+    final tracks = value.$2;
 
     return _PageWidget(
       title: album.name,
@@ -297,7 +303,7 @@ class _PlaylistsPage extends ConsumerWidget {
               onTap: () {
                 ref
                     .read(appNavigationProvider.notifier)
-                    .pushPage(page: AppPagePlaylist(playlist: playlist));
+                    .pushPage(page: AppPagePlaylist(playlistId: playlist.id));
               },
             );
           },
@@ -333,7 +339,7 @@ class _AlbumListPage extends ConsumerWidget {
                       if (album == null) return;
                       ref
                           .read(appNavigationProvider.notifier)
-                          .pushPage(page: AppPageAlbum(album: album));
+                          .pushPage(page: AppPageAlbum(albumId: album.id));
                     },
                     child: AlbumArtWidget(coverArt: album?.coverArt),
                   ),
@@ -407,7 +413,7 @@ class _ArtistPage extends ConsumerWidget {
                   onTap: () {
                     ref
                         .read(appNavigationProvider.notifier)
-                        .pushPage(page: AppPageAlbum(album: album));
+                        .pushPage(page: AppPageAlbum(albumId: album.id));
                   },
                   child: Column(
                     children: [
