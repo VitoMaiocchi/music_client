@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:music_client/backend.dart';
+import 'package:music_client/backend/backend.dart';
 import 'package:music_client/theme.dart';
 
 class AlbumArtWidget extends ConsumerWidget {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:music_client/backend/types.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
-import 'package:music_client/util/network_objects.dart';
+import 'package:music_client/backend/network_objects.dart';
 
 typedef _ListItem = ({
   Key key,

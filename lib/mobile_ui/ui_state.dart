@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:music_client/backend/types.dart';
 import 'package:music_client/playback.dart';
 
 enum PlayerState { collapsed, expanded, queue }

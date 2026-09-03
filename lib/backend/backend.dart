@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
-import 'package:music_client/util/network_objects.dart';
+import 'package:music_client/backend/types.dart';
+import 'package:music_client/backend/network_objects.dart';
 import 'package:xml/xml.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'playback.dart';
+import '../playback.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 final subsonicServiceProvider = Provider((ref) => SubsonicService());
