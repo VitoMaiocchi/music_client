@@ -92,6 +92,9 @@ class AppNavigation extends Notifier<AppNavigationState> {
       state = state.copyWith(pageStack: [page]);
       return;
     }
+    final last = state.pageStack.isNotEmpty ? state.pageStack.last : null;
+    if (last != null && _samePage(last, page)) return;
+
     state = state.copyWith(pageStack: [...state.pageStack, page]);
   }
 
@@ -103,6 +106,18 @@ class AppNavigation extends Notifier<AppNavigationState> {
     state = state.copyWith(
       pageStack: state.pageStack.sublist(0, state.pageStack.length - 1),
     );
+  }
+
+  bool _samePage(AppPage a, AppPage b) {
+    if (a.runtimeType != b.runtimeType) return false;
+    if (a is AppPageAlbum && b is AppPageAlbum) return a.albumId == b.albumId;
+    if (a is AppPagePlaylist && b is AppPagePlaylist) {
+      return a.playlistId == b.playlistId;
+    }
+    if (a is AppPageArtist && b is AppPageArtist) {
+      return a.artistId == b.artistId;
+    }
+    return true;
   }
 }
 
