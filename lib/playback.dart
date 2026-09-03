@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:music_client/backend/backend.dart';
+import 'package:music_client/backend/subsonic.dart';
 import 'package:music_client/backend/types.dart';
 import 'package:music_client/backend/network_objects.dart';
 import 'package:uuid/uuid.dart';
@@ -267,7 +268,7 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
         id: current.$2,
         title: track.title,
         artist: track.artist,
-        artUri: SubsonicService().getCoverUri(track.coverArt, 1000),
+        artUri: getCoverUri(track.coverArt, 1000),
       ),
     );
 
