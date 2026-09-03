@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/mobile_ui/home_screen.dart';
 import 'package:music_client/mobile_ui/ui_state.dart';
-import 'package:music_client/playback.dart';
+import 'package:music_client/playback/playback.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
