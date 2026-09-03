@@ -43,6 +43,7 @@ dependencies:
   rxdart: ^0.28.0
   just_audio_media_kit: ^2.0.0
   media_kit_libs_linux: ^1.0.0
+  audio_service_mpris: ^0.2.1 
 
 dev_dependencies:
   flutter_test:
