@@ -76,6 +76,7 @@ class AppNavigationState {
   }
 }
 
+//TODO: dont push if its the same page
 class AppNavigation extends Notifier<AppNavigationState> {
   @override
   AppNavigationState build() => AppNavigationState(

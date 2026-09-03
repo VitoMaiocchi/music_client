@@ -94,7 +94,7 @@ Widget buildPage(AppPage page) {
     case AppPagePlaylist():
       return _PlaylistPage(page.playlist);
     case AppPageArtist():
-      return const _PagePlaceholder('Artist');
+      return _ArtistPage(page.artistId);
   }
 }
 
@@ -345,6 +345,99 @@ class _AlbumListPage extends ConsumerWidget {
             childAspectRatio: 1.0,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ArtistPage extends ConsumerWidget {
+  final String artistId;
+  const _ArtistPage(this.artistId);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final value = ref.watch(artistProvider(artistId));
+
+    if (value.isLoading) {
+      return _PageWidget(
+        title: '...',
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+      );
+    }
+
+    if (value.hasError) {
+      return _PageWidget(
+        title: 'Error',
+        child: Center(child: Text('Error: ${value.error}')),
+      );
+    }
+
+    final artist = value.value!;
+
+    return _PageWidget(
+      title: artist.name,
+      child: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: Colors.black,
+            expandedHeight: 300,
+            toolbarHeight: 0,
+            pinned: false,
+            floating: false,
+            flexibleSpace: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: AlbumArtWidget(coverArt: artist.coverArt, size: 292),
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(8.0),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate((context, i) {
+                final album = artist.albums[i];
+                return GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(appNavigationProvider.notifier)
+                        .pushPage(page: AppPageAlbum(album: album));
+                  },
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 120,
+                        child: AlbumArtWidget(
+                          coverArt: album.coverArt,
+                          size: 120,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        album.name,
+                        style: AppTextStyles.listTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                );
+              }, childCount: artist.albums.length),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.75,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

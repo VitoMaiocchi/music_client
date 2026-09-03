@@ -29,12 +29,14 @@ class Track extends ObjectProvider<Track> {
   final String title;
   final String artist;
   final String coverArt;
+  final String artistId;
 
   const Track({
     required this.id,
     required this.title,
     required this.artist,
     required this.coverArt,
+    required this.artistId,
   });
 
   factory Track.fromXml(XmlElement element) {
@@ -43,6 +45,7 @@ class Track extends ObjectProvider<Track> {
       title: element.getAttribute('title') ?? '',
       artist: element.getAttribute('artist') ?? '',
       coverArt: element.getAttribute('coverArt') ?? '',
+      artistId: element.getAttribute('artistId') ?? '',
     );
   }
 
@@ -52,6 +55,7 @@ class Track extends ObjectProvider<Track> {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       artist: json['artist'] as String? ?? '',
+      artistId: json['artist'] as String? ?? '',
       // Navidrome serves cover art by track id when the track has embedded art
       coverArt: hasCoverArt ? (json['id'] as String? ?? '') : '',
     );
@@ -119,6 +123,30 @@ class Album extends ObjectProvider<Album> {
       coverArt: element.getAttribute('coverArt') ?? '',
       artistId: element.getAttribute('artistId') ?? '',
       userRating: element.getAttribute('userRating') ?? '',
+    );
+  }
+}
+
+@immutable
+class Artist {
+  final String id;
+  final String name;
+  final String coverArt;
+  final List<Album> albums;
+
+  const Artist({
+    required this.id,
+    required this.name,
+    required this.coverArt,
+    required this.albums,
+  });
+
+  factory Artist.fromXml(XmlElement element) {
+    return Artist(
+      id: element.getAttribute('id') ?? '',
+      name: element.getAttribute('name') ?? '',
+      coverArt: element.getAttribute('coverArt') ?? '',
+      albums: element.findElements('album').map(Album.fromXml).toList(),
     );
   }
 }

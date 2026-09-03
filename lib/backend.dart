@@ -35,17 +35,23 @@ final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
   return ref.read(subsonicServiceProvider).getPlaylists();
 });
 
-final playlistProvider = FutureProvider.family<List<Track>, String>(
-  (ref, id) async {
-    return ref.read(subsonicServiceProvider).getPlaylist(id);
-  },
-);
+final playlistProvider = FutureProvider.family<List<Track>, String>((
+  ref,
+  id,
+) async {
+  return ref.read(subsonicServiceProvider).getPlaylist(id);
+});
 
-final albumTracksProvider = FutureProvider.family<List<Track>, String>(
-  (ref, id) async {
-    return ref.read(subsonicServiceProvider).getAlbumTracks(id);
-  },
-);
+final albumTracksProvider = FutureProvider.family<List<Track>, String>((
+  ref,
+  id,
+) async {
+  return ref.read(subsonicServiceProvider).getAlbumTracks(id);
+});
+
+final artistProvider = FutureProvider.family<Artist, String>((ref, id) async {
+  return ref.read(subsonicServiceProvider).getArtist(id);
+});
 
 final albumListProvider = FutureProvider<NetworkList<Album>>((ref) async {
   final (albums, totalCount) = await ref
@@ -339,6 +345,37 @@ class SubsonicService {
     if (album == null) return const <Track>[];
 
     return album.findElements('song').map(Track.fromXml).toList();
+  }
+
+  Future<Artist> getArtist(String id) async {
+    final response = await http.get(_buildUri('getArtist', {'id': id}));
+
+    if (response.statusCode != 200) {
+      throw Exception('HTTP ${response.statusCode}');
+    }
+
+    final body = utf8.decode(response.bodyBytes);
+    return _parseArtist(body);
+  }
+
+  Artist _parseArtist(String xmlBody) {
+    final document = XmlDocument.parse(xmlBody);
+
+    final status = document
+        .findAllElements('subsonic-response')
+        .first
+        .getAttribute('status');
+
+    if (status != 'ok') {
+      final error = document.findAllElements('error').first;
+      throw Exception('Subsonic error: ${error.getAttribute('message')}');
+    }
+
+    final artist = document.findAllElements('artist').firstOrNull;
+    if (artist == null)
+      return Artist(id: '', name: '', coverArt: '', albums: const []);
+
+    return Artist.fromXml(artist);
   }
 
   Future<(List<Album>, int)> getAlbumList({

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:music_client/backend.dart';
+import 'package:music_client/mobile_ui/ui_state.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
@@ -268,11 +270,20 @@ class _Expanded extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
-              Text(
-                track?.artist ?? '',
-                style: AppTextStyles.playerSubtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              GestureDetector(
+                onTap: () {
+                  if (track == null) return;
+                  print("touch ${track?.artistId}");
+                  final navi = ref.read(appNavigationProvider.notifier);
+                  navi.pushPage(page: AppPageArtist(artistId: track!.artistId));
+                  navi.setPlayerState(PlayerState.collapsed);
+                },
+                child: Text(
+                  track?.artist ?? '',
+                  style: AppTextStyles.playerSubtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(height: 20),
 
