@@ -4,6 +4,7 @@ import 'package:music_client/backend.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
+import 'package:music_client/util/network_objects.dart';
 import 'package:music_client/util/track_item.dart';
 
 import 'ui_state.dart';
@@ -232,7 +233,12 @@ class _AlbumListPage extends ConsumerWidget {
           itemCount: albums.itemCount,
           itemBuilder: (_, i) => Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Center(child: AlbumArtWidget(coverArt: albums[i]?.coverArt)),
+            child: ObjectProviderBuilder<Album>(
+              provider: albums[i],
+              buildFunction: (context, album) {
+                return Center(child: AlbumArtWidget(coverArt: album?.coverArt));
+              },
+            ),
           ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 4,

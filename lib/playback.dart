@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:music_client/backend.dart';
+import 'package:music_client/util/network_objects.dart';
 import 'package:uuid/uuid.dart';
 import 'package:xml/xml.dart';
 import 'package:just_audio/just_audio.dart';
@@ -20,8 +21,10 @@ final playerStateProvider = StreamProvider<PlayerState>((ref) {
   return ref.read(playbackServiceProvider).player.playerStateStream;
 });
 
+typedef TrackProvider = ObjectProvider<Track>;
+
 @immutable
-class Track {
+class Track extends ObjectProvider<Track> {
   final String id;
   final String title;
   final String artist;
@@ -91,7 +94,7 @@ class Playlist {
 }
 
 @immutable
-class Album {
+class Album extends ObjectProvider<Album> {
   final String id;
   final String name;
   final String artist;
@@ -122,7 +125,7 @@ class Album {
 
 @immutable
 abstract class TrackList {
-  Track? operator [](int index);
+  TrackProvider operator [](int index);
   int get length;
 }
 
@@ -151,7 +154,7 @@ class TopTracks extends TrackList {
   TopTracks(this._tracks);
 
   @override
-  Track? operator [](int index) => _tracks[index];
+  TrackProvider operator [](int index) => _tracks[index];
 
   @override
   int get length => _tracks.itemCount;
@@ -227,7 +230,7 @@ class Queue {
     return _queueEntries[queueIndex].uuid;
   }
 
-  (Track?, String) operator [](int index) {
+  (TrackProvider?, String) operator [](int index) {
     int queueIndex = _current + index;
     assert(queueIndex >= 0 && queueIndex < _queueEntries.length);
     final entry = _queueEntries[queueIndex];
@@ -358,7 +361,8 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
         : null;
     if (current.$2 == previousID) return;
     if (current.$1 == null) return;
-    final track = current.$1!;
+    final track = getValue(current.$1!);
+    if (track == null) return;
 
     playbackService.mediaItem.add(
       MediaItem(

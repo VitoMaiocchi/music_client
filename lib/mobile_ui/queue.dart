@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
+import 'package:music_client/util/network_objects.dart';
 
 typedef _ListItem = ({
   Key key,
@@ -52,7 +53,7 @@ class QueueWidget extends ConsumerWidget {
       isCurrent: false,
     ));
     items.add((
-      key: ValueKey('t:${queue.getKeyAtPosition(0)}'),
+      key: ValueKey(queueSize > 0 ? 't:${queue.getKeyAtPosition(0)}' : null),
       relative: null,
       section: null,
       isCurrent: true,
@@ -134,8 +135,8 @@ class QueueWidget extends ConsumerWidget {
             }
 
             if (item.isCurrent) {
-              final (track, _) = queue[0];
-              return _CurrentTrackTile(key: item.key, track: track);
+              final (track, _) = queueSize > 0 ? queue[0] : (null, '');
+              return _CurrentTrackTile(key: item.key, trackProvider: track);
             }
 
             // Lazy: only pulled for items Flutter actually builds
@@ -145,7 +146,7 @@ class QueueWidget extends ConsumerWidget {
 
             return _QueueTrackTile(
               key: item.key,
-              track: track,
+              trackProvider: track,
               listIndex: index,
               isReordering: isReordering,
             );
@@ -196,94 +197,105 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _CurrentTrackTile extends StatelessWidget {
-  final Track? track;
+  final TrackProvider? trackProvider;
 
-  const _CurrentTrackTile({super.key, required this.track});
+  const _CurrentTrackTile({super.key, required this.trackProvider});
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white10,
-      child: ListTile(
-        leading: AlbumArtWidget(
-          coverArt: track?.coverArt,
-          size: AppSizes.trackAlbumArt,
-        ),
-        title: Text(
-          track?.title ?? '—',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
+    return ObjectProviderBuilder(
+      provider: trackProvider,
+      buildFunction: (context, track) {
+        return ListTile(
+          leading: AlbumArtWidget(
+            coverArt: track?.coverArt,
+            size: AppSizes.trackAlbumArt,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          track?.artist ?? '',
-          style: const TextStyle(color: Colors.white70),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: const Icon(Icons.volume_up, color: Colors.white54, size: 18),
-      ),
+          title: Text(
+            track?.title ?? 'loading title...',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            track?.artist ?? '',
+            style: const TextStyle(color: Colors.white70),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: const Icon(
+            Icons.volume_up,
+            color: Colors.white54,
+            size: 18,
+          ),
+        );
+      },
     );
   }
 }
 
 class _QueueTrackTile extends StatelessWidget {
-  final Track? track;
+  final TrackProvider? trackProvider;
   final int listIndex;
   final ValueNotifier<bool> isReordering;
 
   const _QueueTrackTile({
     super.key,
-    required this.track,
+    required this.trackProvider,
     required this.listIndex,
     required this.isReordering,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: AlbumArtWidget(
-        coverArt: track?.coverArt,
-        size: AppSizes.trackAlbumArt,
-      ),
-      title: Text(
-        track?.title ?? 'loading title...',
-        style: const TextStyle(color: Colors.white),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        track?.artist ?? '',
-        style: const TextStyle(color: Colors.white70),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: SizedBox(
-        width: 40,
-        child: Listener(
-          onPointerDown: (_) {
-            isReordering.value = true;
-            HapticFeedback.mediumImpact();
-          },
-          onPointerUp: (_) {
-            isReordering.value = false;
-            HapticFeedback.lightImpact();
-          },
-          onPointerCancel: (_) {
-            isReordering.value = false;
-            HapticFeedback.lightImpact();
-          },
-          child: ReorderableDragStartListener(
-            index: listIndex,
-            child: const Center(
-              child: Icon(Icons.drag_handle, color: Colors.white38),
+    return ObjectProviderBuilder(
+      provider: trackProvider,
+      buildFunction: (context, track) {
+        return ListTile(
+          leading: AlbumArtWidget(
+            coverArt: track?.coverArt,
+            size: AppSizes.trackAlbumArt,
+          ),
+          title: Text(
+            track?.title ?? 'loading title...',
+            style: const TextStyle(color: Colors.white),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            track?.artist ?? '',
+            style: const TextStyle(color: Colors.white70),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: SizedBox(
+            width: 40,
+            child: Listener(
+              onPointerDown: (_) {
+                isReordering.value = true;
+                HapticFeedback.mediumImpact();
+              },
+              onPointerUp: (_) {
+                isReordering.value = false;
+                HapticFeedback.lightImpact();
+              },
+              onPointerCancel: (_) {
+                isReordering.value = false;
+                HapticFeedback.lightImpact();
+              },
+              child: ReorderableDragStartListener(
+                index: listIndex,
+                child: const Center(
+                  child: Icon(Icons.drag_handle, color: Colors.white38),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

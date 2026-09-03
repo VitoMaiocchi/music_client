@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:music_client/util/network_objects.dart';
 import 'package:xml/xml.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'playback.dart';
@@ -15,8 +16,38 @@ final starredTracksProvider = FutureProvider<List<Track>>((ref) async {
   return ref.read(subsonicServiceProvider).getStarred();
 });
 
+final topTracksProvider = FutureProvider<NetworkList<Track>>((ref) async {
+  final (tracks, totalCount) = await ref
+      .read(subsonicServiceProvider)
+      .getTopTracks(offset: 0, size: 50);
+  return NetworkList<Track>(
+    itemCount: totalCount,
+    pageSize: 50,
+    initialPage: tracks,
+    fetchPage: (offset, size) => ref
+        .read(subsonicServiceProvider)
+        .getTopTracks(offset: offset, size: size)
+        .then((value) => value.$1),
+  );
+});
+
 final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
   return ref.read(subsonicServiceProvider).getPlaylists();
+});
+
+final albumListProvider = FutureProvider<NetworkList<Album>>((ref) async {
+  final (albums, totalCount) = await ref
+      .read(subsonicServiceProvider)
+      .getAlbumList(offset: 0, size: 50);
+  return NetworkList<Album>(
+    itemCount: totalCount,
+    pageSize: 50,
+    initialPage: albums,
+    fetchPage: (offset, size) => ref
+        .read(subsonicServiceProvider)
+        .getAlbumList(offset: offset, size: size)
+        .then((value) => value.$1),
+  );
 });
 
 final audioSourceProvider = FutureProvider.family<AudioSource, Track>((
@@ -41,16 +72,6 @@ final paletteProvider = FutureProvider.family<PaletteGenerator, CoverRequest>((
   final service = ref.read(subsonicServiceProvider);
   return service.getPalette(req);
 });
-
-final albumListProvider =
-    AsyncNotifierProvider<AlbumListNotifier, NetworkList<Album>>(
-      AlbumListNotifier.new,
-    );
-
-final topTracksProvider =
-    AsyncNotifierProvider<TopTracksNotifier, NetworkList<Track>>(
-      TopTracksNotifier.new,
-    );
 
 class CoverRequest {
   final String coverID;
@@ -307,111 +328,5 @@ class SubsonicService {
     };
 
     return _buildUri('getCoverArt', params);
-  }
-}
-
-class AlbumListNotifier extends NetworkListNotifier<Album> {
-  @override
-  Future<(List<Album>, int)> fetchPage(int offset, int size) => ref
-      .read(subsonicServiceProvider)
-      .getAlbumList(offset: offset, size: size);
-}
-
-class TopTracksNotifier extends NetworkListNotifier<Track> {
-  @override
-  Future<(List<Track>, int)> fetchPage(int offset, int size) => ref
-      .read(subsonicServiceProvider)
-      .getTopTracks(offset: offset, size: size);
-}
-
-abstract class NetworkListNotifier<T> extends AsyncNotifier<NetworkList<T>> {
-  int get pageSize => 50;
-  final Set<int> _loading = {};
-
-  Future<(List<T>, int)> fetchPage(int offset, int size);
-
-  @override
-  Future<NetworkList<T>> build() {
-    return fetchPage(0, pageSize).then((value) {
-      final (items, totalCount) = value;
-      return NetworkList.fromInitialPage(
-        itemCount: totalCount,
-        pageSize: pageSize,
-        initialPage: items,
-        notifier: this,
-      );
-    });
-  }
-
-  Future<void> loadItem(int page) async {
-    final current = state.value;
-    assert(current != null);
-    if (current == null) return;
-    if (_loading.contains(page)) return;
-
-    _loading.add(page);
-
-    try {
-      final offset = page * pageSize;
-      final (items, totalCount) = await fetchPage(offset, pageSize);
-
-      final latest = state.value;
-      assert(latest != null);
-      if (latest == null) return;
-
-      state = AsyncData(latest.copyWithPage(page, items));
-    } finally {
-      _loading.remove(page);
-    }
-  }
-}
-
-@immutable
-class NetworkList<T> {
-  final int itemCount;
-  final int _pageSize;
-  final Map<int, List<T>> _pages;
-  final NetworkListNotifier<T> _notifier;
-
-  const NetworkList({
-    required this.itemCount,
-    required int pageSize,
-    required Map<int, List<T>> pages,
-    required NetworkListNotifier<T> notifier,
-  }) : _pageSize = pageSize,
-       _pages = pages,
-       _notifier = notifier;
-
-  NetworkList.fromInitialPage({
-    required this.itemCount,
-    required int pageSize,
-    required List<T> initialPage,
-    required NetworkListNotifier<T> notifier,
-  }) : _pageSize = pageSize,
-       _pages = {0: initialPage},
-       _notifier = notifier;
-
-  NetworkList<T> copyWithPage(int pageIndex, List<T> page) {
-    final newPages = Map<int, List<T>>.from(_pages);
-    newPages[pageIndex] = page;
-    return NetworkList<T>(
-      itemCount: itemCount,
-      pageSize: _pageSize,
-      pages: newPages,
-      notifier: _notifier,
-    );
-  }
-
-  T? operator [](int index) {
-    assert(index >= 0 && index < itemCount);
-    final pageIndex = index ~/ _pageSize;
-    final pageOffset = index % _pageSize;
-    final page = _pages[pageIndex];
-    if (page != null) assert(pageOffset < page.length);
-    if (page == null) {
-      _notifier.loadItem(pageIndex);
-      return null;
-    }
-    return page[pageOffset];
   }
 }

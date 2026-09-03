@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/playback.dart';
 import 'package:music_client/theme.dart';
 import 'package:music_client/util/album_art.dart';
+import 'package:music_client/util/network_objects.dart';
 
 class Player extends ConsumerWidget {
   static const double _transitionThreshold = 0.1;
@@ -20,7 +21,7 @@ class Player extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
-    final track = queue.size().$2 > 0 ? queue[0].$1 : null;
+    final trackProvider = queue.size().$2 > 0 ? queue[0].$1 : null;
     final position = ref
         .watch(positionProvider)
         .maybeWhen(data: (value) => value, orElse: () => Duration.zero);
@@ -41,63 +42,68 @@ class Player extends ConsumerWidget {
     final collapsed = (1 - factor / _transitionThreshold).clamp(0.0, 1.0);
     final expanded = (factor / _transitionThreshold).clamp(0.0, 1.0);
 
-    return Container(
-      color: AppColors.background,
-      child: ClipRect(
-        child: SizedBox(
-          height: height,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Stack(
-              children: [
-                if (expanded > 0)
-                  Opacity(
-                    opacity: expanded,
-                    child: OverflowBox(
-                      maxHeight: maxSize,
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(
-                        height: maxSize,
-                        child: _Expanded(
-                          queue: queue,
-                          isPlaying: isPlaying,
-                          position: position,
-                          duration: duration,
-                          progress: progress,
-                          service: service,
-                          ref: ref,
+    return ObjectProviderBuilder<Track>(
+      provider: trackProvider,
+      buildFunction: (context, track) {
+        return Container(
+          color: AppColors.background,
+          child: ClipRect(
+            child: SizedBox(
+              height: height,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Stack(
+                  children: [
+                    if (expanded > 0)
+                      Opacity(
+                        opacity: expanded,
+                        child: OverflowBox(
+                          maxHeight: maxSize,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            height: maxSize,
+                            child: _Expanded(
+                              track: track,
+                              isPlaying: isPlaying,
+                              position: position,
+                              duration: duration,
+                              progress: progress,
+                              service: service,
+                              ref: ref,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                if (collapsed > 0)
-                  Opacity(
-                    opacity: collapsed,
-                    child: SizedBox(
-                      height: minSize,
-                      child: _Collapsed(
-                        cover: AlbumArtWidget(
-                          coverArt: track?.coverArt,
-                          size: AppSizes.trackAlbumArt,
+                    if (collapsed > 0)
+                      Opacity(
+                        opacity: collapsed,
+                        child: SizedBox(
+                          height: minSize,
+                          child: _Collapsed(
+                            cover: AlbumArtWidget(
+                              coverArt: track?.coverArt,
+                              size: AppSizes.trackAlbumArt,
+                            ),
+                            track: track,
+                            isPlaying: isPlaying,
+                            progress: progress,
+                            service: service,
+                            accentColor: getPrimaryColor(
+                              track?.coverArt,
+                              context,
+                              ref,
+                            ),
+                            ref: ref,
+                          ),
                         ),
-                        track: track,
-                        isPlaying: isPlaying,
-                        progress: progress,
-                        service: service,
-                        accentColor: getPrimaryColor(
-                          track?.coverArt,
-                          context,
-                          ref,
-                        ),
-                        ref: ref,
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -197,7 +203,7 @@ class _Collapsed extends StatelessWidget {
 }
 
 class _Expanded extends StatelessWidget {
-  final Queue queue;
+  final Track? track;
   final bool isPlaying;
   final PlaybackService service;
   final Duration position;
@@ -206,7 +212,7 @@ class _Expanded extends StatelessWidget {
   final WidgetRef ref;
 
   const _Expanded({
-    required this.queue,
+    required this.track,
     required this.isPlaying,
     required this.position,
     required this.duration,
@@ -218,8 +224,6 @@ class _Expanded extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).viewPadding.top;
-
-    final track = queue.size().$2 > 0 ? queue[0].$1 : null;
     final color = getPrimaryColor(track?.coverArt, context, ref);
 
     return AnimatedSwitcher(
