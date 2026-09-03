@@ -90,7 +90,7 @@ Widget buildPage(AppPage page) {
     case AppPageStarredTracks():
       return const _StarredTracksPage();
     case AppPageAlbum():
-      return const _PagePlaceholder('Album');
+      return _AlbumPage(page.album);
     case AppPagePlaylist():
       return _PlaylistPage(page.playlist);
     case AppPageArtist():
@@ -224,6 +224,30 @@ class _PlaylistPage extends ConsumerWidget {
   }
 }
 
+class _AlbumPage extends ConsumerWidget {
+  final Album album;
+  const _AlbumPage(this.album);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tracks = ref.watch(albumTracksProvider(album.id)).value;
+
+    if (tracks == null) {
+      return _PageWidget(
+        title: album.name,
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+      );
+    }
+
+    return _PageWidget(
+      title: album.name,
+      child: _CoverArtTrackList(tracks: tracks, coverArt: album.coverArt),
+    );
+  }
+}
+
 class _PlaylistsPage extends ConsumerWidget {
   const _PlaylistsPage();
 
@@ -302,7 +326,17 @@ class _AlbumListPage extends ConsumerWidget {
             child: ObjectProviderBuilder<Album>(
               provider: albums[i],
               buildFunction: (context, album) {
-                return Center(child: AlbumArtWidget(coverArt: album?.coverArt));
+                return Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (album == null) return;
+                      ref
+                          .read(appNavigationProvider.notifier)
+                          .pushPage(page: AppPageAlbum(album: album));
+                    },
+                    child: AlbumArtWidget(coverArt: album?.coverArt),
+                  ),
+                );
               },
             ),
           ),
