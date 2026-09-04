@@ -8,7 +8,7 @@ final queueProvider = NotifierProvider<QueueNotifier, Queue>(QueueNotifier.new);
 
 @immutable
 class _QueueEntry {
-  final Track? track; //only defined for UserQueue entries
+  final TrackProvider? track; //only defined for UserQueue entries
   final int? position; //only defined for SourceQueue entries
   final String uuid;
 
@@ -26,7 +26,7 @@ class QueueNotifier extends Notifier<Queue> {
 
   void previous() => state = state.previous();
 
-  void add(Track track) => state = state.add(track);
+  void add(TrackProvider track) => state = state.add(track);
 
   void reorder(int oldIndex, int newIndex) =>
       state = state.reorder(oldIndex, newIndex);
@@ -121,7 +121,7 @@ class Queue {
     );
   }
 
-  Queue add(Track track) {
+  Queue add(TrackProvider track) {
     final newQueue = List.of(_queueEntries)
       ..insert(_userQueueEnd, _QueueEntry(track, null, const Uuid().v4()));
     return Queue._internal(

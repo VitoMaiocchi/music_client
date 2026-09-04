@@ -14,7 +14,7 @@ import '../playback/queue.dart';
 class _TrackListTemplate extends ConsumerWidget {
   final TrackProvider? trackProvider;
   final void Function()? onTap;
-  final void Function(Track?)? onSwipe;
+  final void Function()? onSwipe;
   final Widget? trailing;
 
   const _TrackListTemplate({
@@ -77,7 +77,7 @@ class _TrackListTemplate extends ConsumerWidget {
         }
 
         return SwipeableTile(
-          onSwipe: () => onSwipe!(track),
+          onSwipe: onSwipe!,
           color:
               getPrimaryColor(track?.coverArt, context, ref) ??
               AppColors.accentFallback,
@@ -106,8 +106,8 @@ class TrackWidget extends ConsumerWidget {
             .read(appNavigationProvider.notifier)
             .setPlayerState(PlayerState.expanded),
       },
-      onSwipe: (track) => {
-        if (track != null) ref.read(queueProvider.notifier).add(track),
+      onSwipe: () {
+        ref.read(queueProvider.notifier).add(provider);
       },
     );
   }
