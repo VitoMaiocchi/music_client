@@ -51,7 +51,7 @@ class _SwipeableTileState extends State<SwipeableTile>
 
   void _onDragEnd(DragEndDetails details) {
     if (_controller.value > widget.threshold) {
-      debugPrint('swiped right');
+      //Swipe right
       widget.onSwipe();
     }
 
