@@ -147,10 +147,11 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
     );
 
     ref.read(audioSourceProvider(track).future).then((source) async {
-      // Stop before swapping sources: some just_audio backends (notably
-      // web) don't fully release the previous source otherwise.
-      await playbackService.player.stop();
-      await playbackService.player.setAudioSource(source);
+      if (kIsWeb) {
+        //TODO: fix for web
+        await playbackService.player.stop();
+      }
+      await playbackService.player.setAudioSource(source, preload: true);
       await playbackService.play();
     });
   });
