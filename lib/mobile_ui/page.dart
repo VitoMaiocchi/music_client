@@ -1,6 +1,3 @@
-// ignore_for_file: unused_element_parameter
-// TODO: remove the above ignore when the unused parameter is used in the future
-
 // NOTE: THIS IS ALL UGLY PLACE HOLDER UI IT WILL BE REPLACED
 
 import 'package:flutter/material.dart';
@@ -15,24 +12,19 @@ import 'package:music_client/util/track_item.dart';
 
 import 'ui_state.dart';
 
-class _PageWidget extends StatelessWidget {
+class _PageWidget extends ConsumerWidget {
   final String title;
   final Widget child;
-  final Color backgroundColor;
   final Color? backgroundColorGradient;
-  final VoidCallback? onBack;
 
   const _PageWidget({
-    super.key,
     required this.title,
     required this.child,
-    this.backgroundColor = Colors.black,
     this.backgroundColorGradient,
-    this.onBack,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final topInset = MediaQuery.of(context).viewPadding.top;
 
     return Stack(
@@ -43,14 +35,14 @@ class _PageWidget extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [backgroundColor, backgroundColorGradient!],
+                colors: [backgroundColorGradient!, AppColors.background],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
             ),
           )
         else
-          Container(color: backgroundColor),
+          Container(color: AppColors.background),
         //CONTENT
         Padding(
           padding: EdgeInsets.only(top: topInset),
@@ -58,10 +50,11 @@ class _PageWidget extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (onBack != null)
+                  if (ref.watch(appNavigationProvider).pageStack.length > 1)
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: onBack,
+                      onPressed: () =>
+                          ref.read(appNavigationProvider.notifier).popPage(),
                     ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -176,7 +169,7 @@ class _CoverArtTrackList extends StatelessWidget {
       slivers: [
         SliverAppBar(
           automaticallyImplyLeading: false,
-          backgroundColor: Colors.black,
+          backgroundColor: Colors.transparent,
           expandedHeight: 330,
           toolbarHeight: 0,
           pinned: false,
@@ -222,6 +215,7 @@ class _PlaylistPage extends ConsumerWidget {
     final tracks = value.$2;
 
     return _PageWidget(
+      backgroundColorGradient: getPrimaryColor(playlist.coverArt, context, ref),
       title: playlist.name,
       child: _CoverArtTrackList(tracks: tracks, coverArt: playlist.coverArt),
     );
@@ -249,6 +243,7 @@ class _AlbumPage extends ConsumerWidget {
     final tracks = value.$2;
 
     return _PageWidget(
+      backgroundColorGradient: getPrimaryColor(album.coverArt, context, ref),
       title: album.name,
       child: _CoverArtTrackList(tracks: tracks, coverArt: album.coverArt),
     );
@@ -279,10 +274,7 @@ class _PlaylistsPage extends ConsumerWidget {
                 leading: SizedBox(
                   width: AppSizes.playlistAlbumArt.toDouble(),
                   height: AppSizes.playlistAlbumArt.toDouble(),
-                  child: Container(
-                    color: Colors.blue,
-                    child: Icon(Icons.music_note, size: 32),
-                  ),
+                  child: StarArt(),
                 ),
                 title: const Text('Liked Songs'),
                 onTap: () {
@@ -384,12 +376,13 @@ class _ArtistPage extends ConsumerWidget {
     final artist = value.value!;
 
     return _PageWidget(
+      backgroundColorGradient: getPrimaryColor(artist.coverArt, context, ref),
       title: artist.name,
       child: CustomScrollView(
         slivers: [
           SliverAppBar(
             automaticallyImplyLeading: false,
-            backgroundColor: Colors.black,
+            backgroundColor: Colors.transparent,
             expandedHeight: 300,
             toolbarHeight: 0,
             pinned: false,

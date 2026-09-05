@@ -127,6 +127,32 @@ class AlbumArtWidget extends ConsumerWidget {
   }
 }
 
+class StarArt extends StatelessWidget {
+  const StarArt({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest.shortestSide;
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.purple, Colors.blue],
+              ),
+            ),
+            child: Icon(Icons.star, size: size * 0.6, color: Colors.white),
+          );
+        },
+      ),
+    );
+  }
+}
+
 Color? getPrimaryColor(String? coverArt, BuildContext context, WidgetRef ref) {
   if (coverArt == null || coverArt.isEmpty) return null;
 
