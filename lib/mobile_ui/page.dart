@@ -194,33 +194,33 @@ class _CoverArtTrackList extends StatelessWidget {
   }
 }
 
-class _PlaylistPage extends ConsumerWidget {
-  final String playlistId;
-  const _PlaylistPage(this.playlistId);
+// class _PlaylistPage extends ConsumerWidget {
+//   final String playlistId;
+//   const _PlaylistPage(this.playlistId);
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(playlistProvider(playlistId)).value;
+//   @override
+//   Widget build(BuildContext context, WidgetRef ref) {
+//     final value = ref.watch(playlistProvider(playlistId)).value;
 
-    if (value == null) {
-      return _PageWidget(
-        title: "loading ...",
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-      );
-    }
+//     if (value == null) {
+//       return _PageWidget(
+//         title: "loading ...",
+//         child: const Center(
+//           child: CircularProgressIndicator(color: AppColors.progressIndicators),
+//         ),
+//       );
+//     }
 
-    final playlist = value.$1;
-    final tracks = value.$2;
+//     final playlist = value.$1;
+//     final tracks = value.$2;
 
-    return _PageWidget(
-      backgroundColorGradient: getPrimaryColor(playlist.coverArt, context, ref),
-      title: playlist.name,
-      child: _CoverArtTrackList(tracks: tracks, coverArt: playlist.coverArt),
-    );
-  }
-}
+//     return _PageWidget(
+//       backgroundColorGradient: getPrimaryColor(playlist.coverArt, context, ref),
+//       title: playlist.name,
+//       child: _CoverArtTrackList(tracks: tracks, coverArt: playlist.coverArt),
+//     );
+//   }
+// }
 
 class _AlbumPage extends ConsumerWidget {
   final String albumId;
@@ -274,7 +274,7 @@ class _PlaylistsPage extends ConsumerWidget {
                 leading: SizedBox(
                   width: AppSizes.playlistAlbumArt.toDouble(),
                   height: AppSizes.playlistAlbumArt.toDouble(),
-                  child: StarArt(),
+                  child: AlbumArtWidget(coverArt: "star"),
                 ),
                 title: const Text('Liked Songs'),
                 onTap: () {
@@ -437,6 +437,100 @@ class _ArtistPage extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlaylistPage extends ConsumerWidget {
+  final String playlistId;
+  const _PlaylistPage(this.playlistId);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final value = ref.watch(playlistProvider(playlistId)).value;
+
+    if (value == null) {
+      return Container(
+        color: AppColors.background,
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.progressIndicators),
+        ),
+      );
+    }
+
+    final playlist = value.$1;
+    final tracks = value.$2;
+
+    return _PageWidgetNew(
+      title: playlist.name,
+      coverArt: playlist.coverArt,
+      slivers: [
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) => TrackWidget(
+              tracks: PlaylistTracks(tracks, playlistId: playlistId),
+              index: i,
+            ),
+            childCount: tracks.length,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageWidgetNew extends ConsumerWidget {
+  final String title;
+  final String? coverArt;
+  final List<Widget> slivers;
+
+  const _PageWidgetNew({
+    required this.title,
+    required this.coverArt,
+    required this.slivers,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final topInset = MediaQuery.of(context).viewPadding.top;
+
+    return Container(
+      padding: EdgeInsets.only(top: topInset),
+      color: AppColors.background,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Row(
+              children: [
+                if (ref.watch(appNavigationProvider).pageStack.length > 1)
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () =>
+                        ref.read(appNavigationProvider.notifier).popPage(),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(title, style: AppTextStyles.pageTitle),
+                ),
+              ],
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Stack(
+              children: [
+                AlbumArtBlurred(coverArt: coverArt, opacity: 0.25, fade: true),
+                Padding(
+                  padding: EdgeInsetsGeometry.all(64),
+                  child: AlbumArtWidget(coverArt: coverArt),
+                ),
+              ],
+            ),
+          ),
+
+          ...slivers,
         ],
       ),
     );

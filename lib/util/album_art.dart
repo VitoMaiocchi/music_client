@@ -5,6 +5,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend/backend.dart';
 import 'package:music_client/theme.dart';
 
+Widget _lowres(
+  WidgetRef ref,
+  double dpr,
+  String coverArt,
+  Widget fallbackCover,
+) {
+  final lowResSize = (AppSizes.trackAlbumArt * dpr).ceil();
+
+  final coverLow = ref
+      .watch(coverProvider(CoverRequest(coverArt, lowResSize)))
+      .maybeWhen(data: (c) => c, orElse: () => null);
+
+  if (coverLow == null) return fallbackCover;
+
+  return Stack(
+    fit: StackFit.expand,
+    children: [
+      Positioned.fill(child: fallbackCover),
+      Image(
+        key: const ValueKey('lowres'),
+        image: coverLow,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        frameBuilder: (context, child, frame, wasSyncLoaded) {
+          if (frame == null && !wasSyncLoaded) {
+            return fallbackCover;
+          }
+          return child;
+        },
+        errorBuilder: (_, _, _) => fallbackCover,
+      ),
+    ],
+  );
+}
+
+Widget _blur(Widget child) {
+  return ClipRect(
+    child: ImageFiltered(
+      imageFilter: ImageFilter.blur(
+        sigmaX: 15,
+        sigmaY: 15,
+        tileMode: TileMode.mirror,
+      ),
+      child: child,
+    ),
+  );
+}
+
 class AlbumArtWidget extends ConsumerWidget {
   final String? coverArt;
   final int? size;
@@ -22,34 +70,10 @@ class AlbumArtWidget extends ConsumerWidget {
       );
     }
 
+    if (coverArt == "star") return _StarArt();
+
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final lowResSize = (AppSizes.trackAlbumArt * dpr).ceil();
-
-    final coverLow = ref
-        .watch(coverProvider(CoverRequest(coverArt!, lowResSize)))
-        .maybeWhen(data: (c) => c, orElse: () => null);
-
-    final lowres = coverLow != null
-        ? Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(child: _fallbackCover),
-              Image(
-                key: const ValueKey('lowres'),
-                image: coverLow,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                frameBuilder: (context, child, frame, wasSyncLoaded) {
-                  if (frame == null && !wasSyncLoaded) {
-                    return _fallbackCover;
-                  }
-                  return child;
-                },
-                errorBuilder: (_, _, _) => _fallbackCover,
-              ),
-            ],
-          )
-        : _fallbackCover;
+    final lowres = _lowres(ref, dpr, coverArt!, _fallbackCover);
 
     if (size <= AppSizes.trackAlbumArt) {
       return SizedBox(
@@ -59,16 +83,7 @@ class AlbumArtWidget extends ConsumerWidget {
       );
     }
 
-    final blurredLowres = ClipRect(
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(
-          sigmaX: 15,
-          sigmaY: 15,
-          tileMode: TileMode.mirror,
-        ),
-        child: lowres,
-      ),
-    );
+    final blurredLowres = _blur(lowres);
 
     final targetPx = (size * dpr).ceil();
 
@@ -127,8 +142,59 @@ class AlbumArtWidget extends ConsumerWidget {
   }
 }
 
-class StarArt extends StatelessWidget {
-  const StarArt({super.key});
+class AlbumArtBlurred extends ConsumerWidget {
+  final String? coverArt;
+  final double? opacity;
+  final bool fade;
+
+  AlbumArtBlurred({
+    super.key,
+    required this.coverArt,
+    this.opacity,
+    this.fade = false,
+  });
+
+  final _fallbackCover = Container(color: AppColors.background);
+
+  Widget _getArt(BuildContext context, WidgetRef ref) {
+    if (coverArt == null) {
+      return AspectRatio(aspectRatio: 1, child: _fallbackCover);
+    }
+
+    if (coverArt == "star") return _blur(_StarArt());
+
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final lowres = _lowres(ref, dpr, coverArt!, _fallbackCover);
+
+    return _blur(AspectRatio(aspectRatio: 1, child: lowres));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Widget art = _getArt(context, ref);
+
+    if (opacity != null) {
+      art = Opacity(opacity: opacity!, child: art);
+    }
+
+    if (fade) {
+      art = ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Colors.transparent],
+        ).createShader(bounds),
+        blendMode: BlendMode.dstIn,
+        child: art,
+      );
+    }
+
+    return art;
+  }
+}
+
+class _StarArt extends StatelessWidget {
+  const _StarArt();
 
   @override
   Widget build(BuildContext context) {
