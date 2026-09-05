@@ -70,7 +70,7 @@ class AlbumArtWidget extends ConsumerWidget {
       );
     }
 
-    if (coverArt == "star") return _StarArt();
+    if (coverArt == "star") return _StarArt(size: size.toDouble());
 
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final lowres = _lowres(ref, dpr, coverArt!, _fallbackCover);
@@ -190,25 +190,33 @@ class AlbumArtBlurred extends ConsumerWidget {
 }
 
 class _StarArt extends StatelessWidget {
-  const _StarArt();
+  final double? size;
+  const _StarArt({this.size});
+
+  Widget _star(double side) {
+    return Container(
+      width: side,
+      height: side,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.purple, Colors.blue],
+        ),
+      ),
+      child: Icon(Icons.star, size: side * 0.6, color: Colors.white),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (size != null) return _star(size!);
+
     return AspectRatio(
       aspectRatio: 1,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final size = constraints.biggest.shortestSide;
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.purple, Colors.blue],
-              ),
-            ),
-            child: Icon(Icons.star, size: size * 0.6, color: Colors.white),
-          );
+          return _star(constraints.biggest.shortestSide);
         },
       ),
     );

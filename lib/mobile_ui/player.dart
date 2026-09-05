@@ -235,151 +235,154 @@ class _Expanded extends StatelessWidget {
       switchOutCurve: Curves.easeIn,
       layoutBuilder: (current, previous) =>
           Stack(fit: StackFit.expand, children: [...previous, ?current]),
-      child: Container(
+      child: Stack(
         key: ValueKey(track?.id),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              color ?? AppColors.background,
-              Color.lerp(color, AppColors.background, 0.15)!,
-              Color.lerp(color, AppColors.background, 0.4)!,
-              AppColors.background,
-            ],
-            stops: const [0.0, 0.2, 0.35, 1.0],
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(top: topInset),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: AlbumArtWidget(coverArt: track?.coverArt),
-                ),
+        children: [
+          if (track != null)
+            FractionallySizedBox(
+              widthFactor: 1.25,
+              child: AlbumArtBlurred(
+                coverArt: track!.coverArt,
+                opacity: 0.42,
+                fade: true,
               ),
-
-              GestureDetector(
-                onTap: () {
-                  if (track == null) return;
-                  final navi = ref.read(appNavigationProvider.notifier);
-                  navi.pushPage(page: AppPageAlbum(albumId: track!.albumId));
-                  navi.setPlayerState(PlayerState.collapsed);
-                },
-                child: Text(
-                  track?.title ?? 'Nothing playing',
-                  style: AppTextStyles.playerTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              GestureDetector(
-                onTap: () {
-                  if (track == null) return;
-                  final navi = ref.read(appNavigationProvider.notifier);
-                  navi.pushPage(page: AppPageArtist(artistId: track!.artistId));
-                  navi.setPlayerState(PlayerState.collapsed);
-                },
-                child: Text(
-                  track?.artist ?? '',
-                  style: AppTextStyles.playerSubtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
+            ),
+          Padding(
+            padding: EdgeInsets.only(top: topInset),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppSizes.fullArtCorner),
+                    child: AlbumArtWidget(coverArt: track?.coverArt),
                   ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 14,
-                  ),
-                  activeTrackColor: color,
-                  inactiveTrackColor: AppColors.progressIndicators,
-                  thumbColor: AppColors.textPrimary,
-                  overlayColor: AppColors.textPrimary,
                 ),
-                child: Slider(
-                  value: progress.clamp(0.0, 1.0),
-                  onChanged: (v) {
-                    final ms = (v * duration.inMilliseconds).toInt();
-                    service.player.seek(Duration(milliseconds: ms));
+
+                GestureDetector(
+                  onTap: () {
+                    if (track == null) return;
+                    final navi = ref.read(appNavigationProvider.notifier);
+                    navi.pushPage(page: AppPageAlbum(albumId: track!.albumId));
+                    navi.setPlayerState(PlayerState.collapsed);
                   },
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_fmt(position), style: AppTextStyles.listSubtitle),
-                    Text(_fmt(duration), style: AppTextStyles.listSubtitle),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 36,
-                      vertical: 8,
-                    ),
-                    iconSize: 56,
-                    icon: const Icon(Icons.skip_previous, color: Colors.white),
-                    onPressed: () =>
-                        ref.read(queueProvider.notifier).previous(),
+                  child: Text(
+                    track?.title ?? 'Nothing playing',
+                    style: AppTextStyles.fullTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  SizedBox(
-                    width: 76,
-                    height: 76,
-                    child: CustomPaint(
-                      painter: _AntiAliasedCirclePainter(),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () =>
-                              isPlaying ? service.pause() : service.play(),
-                          child: Center(
-                            child: Icon(
-                              isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.black,
-                              size: 56,
+                ),
+                const SizedBox(height: 4),
+
+                GestureDetector(
+                  onTap: () {
+                    if (track == null) return;
+                    final navi = ref.read(appNavigationProvider.notifier);
+                    navi.pushPage(
+                      page: AppPageArtist(artistId: track!.artistId),
+                    );
+                    navi.setPlayerState(PlayerState.collapsed);
+                  },
+                  child: Text(
+                    track?.artist ?? '',
+                    style: AppTextStyles.fullSubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
+                    activeTrackColor: color,
+                    inactiveTrackColor: AppColors.progressIndicators,
+                    thumbColor: AppColors.textPrimary,
+                    overlayColor: AppColors.textPrimary,
+                  ),
+                  child: Slider(
+                    value: progress.clamp(0.0, 1.0),
+                    onChanged: (v) {
+                      final ms = (v * duration.inMilliseconds).toInt();
+                      service.player.seek(Duration(milliseconds: ms));
+                    },
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_fmt(position), style: AppTextStyles.listSubtitle),
+                      Text(_fmt(duration), style: AppTextStyles.listSubtitle),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 8,
+                      ),
+                      iconSize: 56,
+                      icon: const Icon(
+                        Icons.skip_previous,
+                        color: Colors.white,
+                      ),
+                      onPressed: () =>
+                          ref.read(queueProvider.notifier).previous(),
+                    ),
+                    SizedBox(
+                      width: 76,
+                      height: 76,
+                      child: CustomPaint(
+                        painter: _AntiAliasedCirclePainter(),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () =>
+                                isPlaying ? service.pause() : service.play(),
+                            child: Center(
+                              child: Icon(
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: Colors.black,
+                                size: 56,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 36,
-                      vertical: 8,
+                    IconButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 8,
+                      ),
+                      iconSize: 56,
+                      icon: const Icon(Icons.skip_next, color: Colors.white),
+                      onPressed: () => ref.read(queueProvider.notifier).next(),
                     ),
-                    iconSize: 56,
-                    icon: const Icon(Icons.skip_next, color: Colors.white),
-                    onPressed: () => ref.read(queueProvider.notifier).next(),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

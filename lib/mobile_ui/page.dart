@@ -155,6 +155,7 @@ class _TrackListPage extends StatelessWidget {
   }
 }
 
+//TODO bake liked songs in to playlists List
 class _PlaylistsPage extends StatelessWidget {
   final List<Playlist> playlists;
   final void Function(String playlistId) onTap;
@@ -170,25 +171,22 @@ class _PlaylistsPage extends StatelessWidget {
           delegate: SliverChildBuilderDelegate((context, i) {
             if (i == 0) {
               // "Starred" playlist
-              return ListTile(
-                leading: SizedBox(
-                  width: AppSizes.playlistAlbumArt.toDouble(),
-                  height: AppSizes.playlistAlbumArt.toDouble(),
-                  child: AlbumArtWidget(coverArt: "star"),
-                ),
-                title: const Text('Liked Songs'),
+              return ListItem(
+                artSize: AppSizes.playlistAlbumArt,
+                boderRadius: AppSizes.playlistArtCorner,
+                title: "Liked Songs",
                 onTap: () => onTap("star"),
+                coverArt: "star",
               );
             }
             final playlist = playlists[i - 1];
-            return ListTile(
-              leading: AlbumArtWidget(
-                coverArt: playlist.coverArt,
-                size: AppSizes.playlistAlbumArt,
-              ),
-              title: Text(playlist.name),
-              subtitle: Text('${playlist.songCount} songs'),
+            return ListItem(
+              artSize: AppSizes.playlistAlbumArt,
+              boderRadius: AppSizes.playlistArtCorner,
+              title: playlist.name,
               onTap: () => onTap(playlist.id),
+              coverArt: playlist.coverArt,
+              subtitle: '${playlist.songCount} songs',
             );
           }, childCount: playlists.length + 1),
         ),
@@ -206,12 +204,12 @@ class _AlbumListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _PageTemplate(
-      title: "title",
+      title: "Albums",
       slivers: [
         SliverGrid(
           delegate: SliverChildBuilderDelegate(
             (context, i) => Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(4.0),
               child: ObjectProviderBuilder<Album>(
                 provider: albums[i],
                 buildFunction: (context, album) {
@@ -221,7 +219,12 @@ class _AlbumListPage extends StatelessWidget {
                         if (album == null) return;
                         onTap(album.id);
                       },
-                      child: AlbumArtWidget(coverArt: album?.coverArt),
+                      child: ClipRRect(
+                        borderRadius: BorderRadiusGeometry.circular(
+                          AppSizes.albumArtCorner,
+                        ),
+                        child: AlbumArtWidget(coverArt: album?.coverArt),
+                      ),
                     ),
                   );
                 },
@@ -252,16 +255,29 @@ class _ArtistPage extends StatelessWidget {
       coverArt: artist.coverArt,
       slivers: [
         SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 20,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.68, // a bit taller to comfortably fit 2 lines
+          ),
           delegate: SliverChildBuilderDelegate((context, i) {
             final album = artist.albums[i];
             return GestureDetector(
               onTap: () => onTap(album.id),
+              behavior: HitTestBehavior.opaque,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 120,
-                    child: AlbumArtWidget(coverArt: album.coverArt, size: 120),
+                  AspectRatio(
+                    aspectRatio: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        AppSizes.albumArtCorner,
+                      ),
+                      child: AlbumArtWidget(coverArt: album.coverArt),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -269,17 +285,12 @@ class _ArtistPage extends StatelessWidget {
                     style: AppTextStyles.listTitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                   ),
                 ],
               ),
             );
           }, childCount: artist.albums.length),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 0.75,
-          ),
         ),
       ],
     );
@@ -341,10 +352,34 @@ class _PageWidgetNewState extends ConsumerState<_PageTemplate> {
     }
   }
 
+  Widget _titleBig(double topInset) {
+    return Padding(
+      key: _titleKey,
+      padding: EdgeInsets.fromLTRB(16, 8 + topInset, 16, 16),
+      child: Text(widget.title, style: AppTextStyles.pageTitleBig),
+    );
+  }
+
+  Widget _titleSmall() {
+    return Padding(
+      key: _titleKey,
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Center(
+        child: Text(
+          widget.title,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.fullTitle,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).viewPadding.top;
     final canPop = ref.watch(appNavigationProvider).pageStack.length > 1;
+    final hasCover = widget.coverArt != null;
+    final title = hasCover ? _titleSmall() : _titleBig(topInset);
 
     return Container(
       color: AppColors.background,
@@ -354,41 +389,34 @@ class _PageWidgetNewState extends ConsumerState<_PageTemplate> {
             controller: _scrollController,
             slivers: [
               SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
                   children: [
-                    // Cover art (or nothing, if coverArt == null —
-                    // AlbumArtWidget/AlbumArtBlurred handle null internally).
-                    if (widget.coverArt != null)
-                      Stack(
-                        children: [
-                          AlbumArtBlurred(
-                            coverArt: widget.coverArt!,
-                            opacity: 0.25,
-                            fade: true,
-                          ),
+                    if (hasCover)
+                      AlbumArtBlurred(
+                        coverArt: widget.coverArt!,
+                        opacity: 0.25,
+                        fade: true,
+                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hasCover)
                           Padding(
-                            padding: const EdgeInsets.all(72),
-                            child: AlbumArtWidget(coverArt: widget.coverArt),
+                            padding: const EdgeInsets.only(
+                              top: 72,
+                              left: 72,
+                              right: 72,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadiusGeometry.circular(
+                                AppSizes.fullArtCorner,
+                              ),
+                              child: AlbumArtWidget(coverArt: widget.coverArt),
+                            ),
                           ),
-                        ],
-                      ),
 
-                    // Big title, directly below the cover.
-                    Padding(
-                      key: _titleKey,
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        widget.coverArt == null
-                            ? 8 + topInset + _topBarHeight
-                            : 8,
-                        16,
-                        16,
-                      ),
-                      child: Text(
-                        widget.title,
-                        style: AppTextStyles.pageTitleBig,
-                      ),
+                        title,
+                      ],
                     ),
                   ],
                 ),

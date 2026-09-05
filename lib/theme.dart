@@ -21,7 +21,7 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
   static const pageTitleBig = TextStyle(
-    fontSize: 50,
+    fontSize: 42,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
@@ -33,13 +33,13 @@ abstract final class AppTextStyles {
     fontSize: 13,
     color: AppColors.textSecondary,
   );
-  static const playerTitle = TextStyle(
-    fontSize: 18,
+  static const fullTitle = TextStyle(
+    fontSize: 24,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
-  static const playerSubtitle = TextStyle(
-    fontSize: 14,
+  static const fullSubtitle = TextStyle(
+    fontSize: 20,
     color: AppColors.textSecondary,
   );
 }
@@ -51,6 +51,11 @@ abstract final class AppSizes {
   static const int playlistAlbumArt = 64;
   static int albumAlbumArt = 512;
   static int fullAlbumArt = 2024;
+
+  static const double trackArtCorner = 4;
+  static const double playlistArtCorner = 6;
+  static const double albumArtCorner = 8;
+  static const double fullArtCorner = 12;
 
   static int getSize(AlbumArtSize size) {
     switch (size) {

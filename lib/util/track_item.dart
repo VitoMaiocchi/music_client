@@ -11,6 +11,69 @@ import 'package:music_client/util/swipable_tile.dart';
 
 import '../playback/queue.dart';
 
+class ListItem extends StatelessWidget {
+  final int artSize;
+  final double boderRadius;
+  final String? title;
+  final String? subtitle;
+  final String? coverArt;
+  final Widget? trailing;
+  final void Function()? onTap;
+
+  const ListItem({
+    super.key,
+    this.title,
+    this.subtitle,
+    this.coverArt,
+    this.trailing,
+    required this.artSize,
+    required this.boderRadius,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadiusGeometry.circular(boderRadius),
+            child: AlbumArtWidget(coverArt: coverArt, size: artSize),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title ?? '',
+                    style: AppTextStyles.listTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subtitle ?? '',
+                    style: AppTextStyles.listSubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ?trailing,
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    //InkWell so tap work everywhere
+    return InkWell(onTap: onTap, child: content);
+  }
+}
+
 class _TrackListTemplate extends ConsumerWidget {
   final TrackProvider? trackProvider;
   final void Function()? onTap;
@@ -24,56 +87,23 @@ class _TrackListTemplate extends ConsumerWidget {
     this.trailing,
   });
 
-  Widget _content(Track? track) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        children: [
-          AlbumArtWidget(
-            coverArt: track?.coverArt,
-            size: AppSizes.trackAlbumArt,
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track?.title ?? '',
-                    style: AppTextStyles.listTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    track?.artist ?? '',
-                    style: AppTextStyles.listSubtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ?trailing,
-        ],
-      ),
-    );
-  }
-
-  Widget _onTapContent(Track? track) {
-    if (onTap == null) return _content(track);
-    //InkWell so tap work everywhere
-    return InkWell(onTap: onTap, child: _content(track));
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ObjectProviderBuilder(
       provider: trackProvider,
       buildFunction: (context, track) {
+        final content = ListItem(
+          boderRadius: AppSizes.trackArtCorner,
+          artSize: AppSizes.trackAlbumArt,
+          title: track?.title,
+          subtitle: track?.artist,
+          coverArt: track?.coverArt,
+          trailing: trailing,
+          onTap: onTap,
+        );
+
         if (onSwipe == null) {
-          return _onTapContent(track);
+          return content;
         }
 
         return SwipeableTile(
@@ -81,7 +111,7 @@ class _TrackListTemplate extends ConsumerWidget {
           color:
               getPrimaryColor(track?.coverArt, context, ref) ??
               AppColors.accentFallback,
-          child: _onTapContent(track),
+          child: content,
         );
       },
     );
