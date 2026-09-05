@@ -24,7 +24,7 @@ class Player extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
-    final trackProvider = queue.size().$2 > 0 ? queue[0].$1 : null;
+    final trackProvider = queue.size() > 0 ? queue[0].$1 : null;
     final position = ref
         .watch(positionProvider)
         .maybeWhen(data: (value) => value, orElse: () => Duration.zero);

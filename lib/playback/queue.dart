@@ -55,14 +55,9 @@ class Queue {
     this._userQueueEnd,
   );
 
-  (int, int, int) size() {
-    // (history, queue size, userqueue end)
-    return (
-      -_current,
-      _queueEntries.length - _current,
-      _userQueueEnd - _current,
-    );
-  }
+  int historySize() => -_current;
+  int size() => _queueEntries.length - _current;
+  int userQueueSize() => _userQueueEnd - _current;
 
   String getKeyAtPosition(int index) {
     int queueIndex = _current + index;

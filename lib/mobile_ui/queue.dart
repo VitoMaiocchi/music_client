@@ -30,7 +30,8 @@ class QueueWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final queue = ref.watch(queueProvider);
-    final (_, queueSize, relUserQueueEnd) = queue.size();
+    final queueSize = queue.size();
+    final relUserQueueEnd = queue.userQueueSize();
 
     // relUserQueueEnd == relative index of the first autoplay track.
     final uqCount = relUserQueueEnd - 1;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide NavigationBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/mobile_ui/player.dart';
 import 'package:music_client/mobile_ui/queue.dart';
+import 'package:music_client/playback/queue.dart';
 
 import 'page.dart';
 import 'ui_state.dart';
@@ -214,6 +215,8 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
           ),
         );
 
+        final playerActive = (ref.watch(queueProvider).size() > 0);
+
         return Stack(
           children: [
             Offstage(
@@ -222,7 +225,7 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
                 height:
                     screenHeight -
                     widget.navigationHeight -
-                    widget.miniPlayerHeight,
+                    (playerActive ? widget.miniPlayerHeight : 0),
                 child: buildPage(currentPage),
               ),
             ),
@@ -230,7 +233,7 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
             Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                player,
+                if (playerActive) player,
                 NavigationBar(
                   maxSize: widget.navigationHeight,
                   factor: (1 - factor).clamp(0.0, 1.0),

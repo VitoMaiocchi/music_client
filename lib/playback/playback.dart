@@ -127,10 +127,10 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
   ref.listen(queueProvider, (previous, next) {
     if (previous == next) return;
 
-    if (next.size().$2 <= 0) return;
+    if (next.size() <= 0) return;
     final current = next[0];
     final previousID = previous != null
-        ? (previous.size().$2 > 0 ? previous[0].$2 : null)
+        ? (previous.size() > 0 ? previous[0].$2 : null)
         : null;
     if (current.$2 == previousID) return;
     if (current.$1 == null) return;
@@ -154,7 +154,7 @@ final playbackServiceProvider = Provider<PlaybackService>((ref) {
       await playbackService.player.setAudioSource(source, preload: true);
       await playbackService.play();
     });
-  });
+  }, fireImmediately: true);
 
   playbackService.player.durationStream.listen((duration) {
     final current = playbackService.mediaItem.valueOrNull;
