@@ -20,6 +20,11 @@ abstract final class AppTextStyles {
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
+  static const pageTitleBig = TextStyle(
+    fontSize: 50,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
   static const listTitle = TextStyle(
     fontSize: 15,
     color: AppColors.textPrimary,

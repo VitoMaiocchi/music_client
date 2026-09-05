@@ -226,7 +226,7 @@ class _HomeScreenMobileState extends ConsumerState<HomeScreenMobile>
                     screenHeight -
                     widget.navigationHeight -
                     (playerActive ? widget.miniPlayerHeight : 0),
-                child: buildPage(currentPage),
+                child: AppPageWidget(page: currentPage),
               ),
             ),
 

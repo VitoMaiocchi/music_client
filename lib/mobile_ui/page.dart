@@ -1,5 +1,3 @@
-// NOTE: THIS IS ALL UGLY PLACE HOLDER UI IT WILL BE REPLACED
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:music_client/backend/backend.dart';
@@ -12,83 +10,109 @@ import 'package:music_client/util/track_item.dart';
 
 import 'ui_state.dart';
 
-class _PageWidget extends ConsumerWidget {
-  final String title;
-  final Widget child;
-  final Color? backgroundColorGradient;
+class AppPageWidget extends ConsumerWidget {
+  final AppPage page;
 
-  const _PageWidget({
-    required this.title,
-    required this.child,
-    this.backgroundColorGradient,
-  });
+  const AppPageWidget({super.key, required this.page});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final topInset = MediaQuery.of(context).viewPadding.top;
+    switch (page) {
+      case AppPagePlaylists():
+        final value = ref.watch(playlistsProvider).value;
+        if (value == null) return _LoadingPage();
+        return _PlaylistsPage(
+          playlists: value,
+          onTap: (playlistId) {
+            if (playlistId == "star") {
+              return ref
+                  .read(appNavigationProvider.notifier)
+                  .pushPage(page: const AppPageStarredTracks());
+            }
+            return ref
+                .read(appNavigationProvider.notifier)
+                .pushPage(page: AppPagePlaylist(playlistId: playlistId));
+          },
+        );
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // BACKGROUND
-        if (backgroundColorGradient != null)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [backgroundColorGradient!, AppColors.background],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          )
-        else
-          Container(color: AppColors.background),
-        //CONTENT
-        Padding(
-          padding: EdgeInsets.only(top: topInset),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  if (ref.watch(appNavigationProvider).pageStack.length > 1)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () =>
-                          ref.read(appNavigationProvider.notifier).popPage(),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(title, style: AppTextStyles.pageTitle),
-                  ),
-                ],
-              ),
-              Expanded(child: child),
-            ],
-          ),
-        ),
-      ],
-    );
+      case AppPageAlbums():
+        final value = ref.watch(albumListProvider).value;
+        if (value == null) return _LoadingPage();
+        return _AlbumListPage(
+          albums: value,
+          onTap: (albumId) {
+            ref
+                .read(appNavigationProvider.notifier)
+                .pushPage(page: AppPageAlbum(albumId: albumId));
+          },
+        );
+
+      case AppPageTracks():
+        final value = ref.watch(topTracksProvider).value;
+        if (value == null) return _LoadingPage();
+        return _TrackListPage(
+          trackList: TopTracks(value),
+          title: "Top Tracks",
+          coverArt: null,
+        );
+
+      case AppPageSearch():
+        return const _PagePlaceholder('Search');
+
+      case AppPageStarredTracks():
+        final value = ref.watch(starredTracksProvider).value;
+        if (value == null) return _LoadingPage();
+        return _TrackListPage(
+          trackList: StarredTracks(value),
+          title: "Liked Songs",
+          coverArt: "star",
+        );
+
+      case AppPageAlbum():
+        final albumId = (page as AppPageAlbum).albumId;
+        final value = ref.watch(albumTracksProvider(albumId)).value;
+        if (value == null) return _LoadingPage();
+        return _TrackListPage(
+          trackList: AlbumTracks(value.$2, albumId: albumId),
+          title: value.$1.name,
+          coverArt: value.$1.coverArt,
+        );
+
+      case AppPagePlaylist():
+        final playlistId = (page as AppPagePlaylist).playlistId;
+        final value = ref.watch(playlistProvider(playlistId)).value;
+        if (value == null) return _LoadingPage();
+        return _TrackListPage(
+          trackList: PlaylistTracks(value.$2, playlistId: playlistId),
+          title: value.$1.name,
+          coverArt: value.$1.coverArt,
+        );
+
+      case AppPageArtist():
+        final artistId = (page as AppPageArtist).artistId;
+        final value = ref.watch(artistProvider(artistId)).value;
+        if (value == null) return _LoadingPage();
+        return _ArtistPage(
+          artist: value,
+          onTap: (albumId) {
+            ref
+                .read(appNavigationProvider.notifier)
+                .pushPage(page: AppPageAlbum(albumId: albumId));
+          },
+        );
+    }
   }
 }
 
-Widget buildPage(AppPage page) {
-  switch (page) {
-    case AppPagePlaylists():
-      return const _PlaylistsPage();
-    case AppPageAlbums():
-      return const _AlbumListPage();
-    case AppPageTracks():
-      return const _TopTracksPage();
-    case AppPageSearch():
-      return const _PagePlaceholder('Search');
-    case AppPageStarredTracks():
-      return const _StarredTracksPage();
-    case AppPageAlbum():
-      return _AlbumPage(page.albumId);
-    case AppPagePlaylist():
-      return _PlaylistPage(page.playlistId);
-    case AppPageArtist():
-      return _ArtistPage(page.artistId);
+class _LoadingPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      child: const Center(
+        child: CircularProgressIndicator(color: AppColors.progressIndicators),
+      ),
+    );
   }
 }
 
@@ -99,175 +123,51 @@ class _PagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PageWidget(
-      title: title,
-      child: const Center(child: Text('Page not implemented')),
-    );
+    return Center(child: Text('Page not implemented: $title'));
   }
 }
 
-class _TopTracksPage extends ConsumerWidget {
-  const _TopTracksPage();
+class _TrackListPage extends StatelessWidget {
+  final TrackList trackList;
+  final String title;
+  final String? coverArt;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(topTracksProvider);
-    return _PageWidget(
-      title: 'Top Tracks',
-      child: tracks.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (tracks) => ListView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: tracks.itemCount,
-          itemBuilder: (context, i) {
-            return TrackWidget(tracks: TopTracks(tracks), index: i);
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _StarredTracksPage extends ConsumerWidget {
-  const _StarredTracksPage();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(starredTracksProvider);
-
-    return _PageWidget(
-      title: 'Favorites',
-      child: tracks.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (tracks) => ListView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: tracks.length,
-          itemBuilder: (context, i) {
-            return TrackWidget(tracks: StarredTracks(tracks), index: i);
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _CoverArtTrackList extends StatelessWidget {
-  final List<Track> tracks;
-  final String coverArt;
-
-  const _CoverArtTrackList({required this.tracks, required this.coverArt});
+  const _TrackListPage({
+    required this.trackList,
+    required this.title,
+    required this.coverArt,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    return _PageTemplate(
+      title: title,
+      coverArt: coverArt,
       slivers: [
-        SliverAppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.transparent,
-          expandedHeight: 330,
-          toolbarHeight: 0,
-          pinned: false,
-          floating: false,
-          flexibleSpace: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: AlbumArtWidget(coverArt: coverArt, size: 322),
-              ),
-            ),
-          ),
-        ),
         SliverList(
-          delegate: SliverChildBuilderDelegate((context, i) {
-            return TrackWidget(tracks: StarredTracks(tracks), index: i);
-          }, childCount: tracks.length),
+          delegate: SliverChildBuilderDelegate(
+            (context, i) => TrackWidget(tracks: trackList, index: i),
+            childCount: trackList.length,
+          ),
         ),
       ],
     );
   }
 }
 
-// class _PlaylistPage extends ConsumerWidget {
-//   final String playlistId;
-//   const _PlaylistPage(this.playlistId);
+class _PlaylistsPage extends StatelessWidget {
+  final List<Playlist> playlists;
+  final void Function(String playlistId) onTap;
 
-//   @override
-//   Widget build(BuildContext context, WidgetRef ref) {
-//     final value = ref.watch(playlistProvider(playlistId)).value;
-
-//     if (value == null) {
-//       return _PageWidget(
-//         title: "loading ...",
-//         child: const Center(
-//           child: CircularProgressIndicator(color: AppColors.progressIndicators),
-//         ),
-//       );
-//     }
-
-//     final playlist = value.$1;
-//     final tracks = value.$2;
-
-//     return _PageWidget(
-//       backgroundColorGradient: getPrimaryColor(playlist.coverArt, context, ref),
-//       title: playlist.name,
-//       child: _CoverArtTrackList(tracks: tracks, coverArt: playlist.coverArt),
-//     );
-//   }
-// }
-
-class _AlbumPage extends ConsumerWidget {
-  final String albumId;
-  const _AlbumPage(this.albumId);
+  const _PlaylistsPage({required this.playlists, required this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(albumTracksProvider(albumId)).value;
-
-    if (value == null) {
-      return _PageWidget(
-        title: "loading ...",
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-      );
-    }
-
-    final album = value.$1;
-    final tracks = value.$2;
-
-    return _PageWidget(
-      backgroundColorGradient: getPrimaryColor(album.coverArt, context, ref),
-      title: album.name,
-      child: _CoverArtTrackList(tracks: tracks, coverArt: album.coverArt),
-    );
-  }
-}
-
-class _PlaylistsPage extends ConsumerWidget {
-  const _PlaylistsPage();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final playlists = ref.watch(playlistsProvider);
-
-    return _PageWidget(
-      title: 'Playlists',
-      child: playlists.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (playlists) => ListView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: playlists.length + 1,
-          itemBuilder: (context, i) {
+  Widget build(BuildContext context) {
+    return _PageTemplate(
+      title: "Playlists",
+      slivers: [
+        SliverList(
+          delegate: SliverChildBuilderDelegate((context, i) {
             if (i == 0) {
               // "Starred" playlist
               return ListTile(
@@ -277,11 +177,7 @@ class _PlaylistsPage extends ConsumerWidget {
                   child: AlbumArtWidget(coverArt: "star"),
                 ),
                 title: const Text('Liked Songs'),
-                onTap: () {
-                  ref
-                      .read(appNavigationProvider.notifier)
-                      .pushPage(page: const AppPageStarredTracks());
-                },
+                onTap: () => onTap("star"),
               );
             }
             final playlist = playlists[i - 1];
@@ -292,188 +188,50 @@ class _PlaylistsPage extends ConsumerWidget {
               ),
               title: Text(playlist.name),
               subtitle: Text('${playlist.songCount} songs'),
-              onTap: () {
-                ref
-                    .read(appNavigationProvider.notifier)
-                    .pushPage(page: AppPagePlaylist(playlistId: playlist.id));
-              },
+              onTap: () => onTap(playlist.id),
             );
-          },
+          }, childCount: playlists.length + 1),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _AlbumListPage extends ConsumerWidget {
-  const _AlbumListPage();
+class _AlbumListPage extends StatelessWidget {
+  final NetworkList<Album> albums;
+  final void Function(String albumId) onTap;
+
+  const _AlbumListPage({required this.albums, required this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final albums = ref.watch(albumListProvider);
-    return _PageWidget(
-      title: 'Albums',
-      child: albums.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (albums) => GridView.builder(
-          itemCount: albums.itemCount,
-          itemBuilder: (_, i) => Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ObjectProviderBuilder<Album>(
-              provider: albums[i],
-              buildFunction: (context, album) {
-                return Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (album == null) return;
-                      ref
-                          .read(appNavigationProvider.notifier)
-                          .pushPage(page: AppPageAlbum(albumId: album.id));
-                    },
-                    child: AlbumArtWidget(coverArt: album?.coverArt),
-                  ),
-                );
-              },
+  Widget build(BuildContext context) {
+    return _PageTemplate(
+      title: "title",
+      slivers: [
+        SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) => Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ObjectProviderBuilder<Album>(
+                provider: albums[i],
+                buildFunction: (context, album) {
+                  return Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (album == null) return;
+                        onTap(album.id);
+                      },
+                      child: AlbumArtWidget(coverArt: album?.coverArt),
+                    ),
+                  );
+                },
+              ),
             ),
+            childCount: albums.itemCount,
           ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 4,
             childAspectRatio: 1.0,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ArtistPage extends ConsumerWidget {
-  final String artistId;
-  const _ArtistPage(this.artistId);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(artistProvider(artistId));
-
-    if (value.isLoading) {
-      return _PageWidget(
-        title: '...',
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-      );
-    }
-
-    if (value.hasError) {
-      return _PageWidget(
-        title: 'Error',
-        child: Center(child: Text('Error: ${value.error}')),
-      );
-    }
-
-    final artist = value.value!;
-
-    return _PageWidget(
-      backgroundColorGradient: getPrimaryColor(artist.coverArt, context, ref),
-      title: artist.name,
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            automaticallyImplyLeading: false,
-            backgroundColor: Colors.transparent,
-            expandedHeight: 300,
-            toolbarHeight: 0,
-            pinned: false,
-            floating: false,
-            flexibleSpace: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: AlbumArtWidget(coverArt: artist.coverArt, size: 292),
-                ),
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(8.0),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate((context, i) {
-                final album = artist.albums[i];
-                return GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(appNavigationProvider.notifier)
-                        .pushPage(page: AppPageAlbum(albumId: album.id));
-                  },
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        height: 120,
-                        child: AlbumArtWidget(
-                          coverArt: album.coverArt,
-                          size: 120,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        album.name,
-                        style: AppTextStyles.listTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                );
-              }, childCount: artist.albums.length),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.75,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaylistPage extends ConsumerWidget {
-  final String playlistId;
-  const _PlaylistPage(this.playlistId);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(playlistProvider(playlistId)).value;
-
-    if (value == null) {
-      return Container(
-        color: AppColors.background,
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.progressIndicators),
-        ),
-      );
-    }
-
-    final playlist = value.$1;
-    final tracks = value.$2;
-
-    return _PageWidgetNew(
-      title: playlist.name,
-      coverArt: playlist.coverArt,
-      slivers: [
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, i) => TrackWidget(
-              tracks: PlaylistTracks(tracks, playlistId: playlistId),
-              index: i,
-            ),
-            childCount: tracks.length,
           ),
         ),
       ],
@@ -481,56 +239,203 @@ class _PlaylistPage extends ConsumerWidget {
   }
 }
 
-class _PageWidgetNew extends ConsumerWidget {
+class _ArtistPage extends StatelessWidget {
+  final Artist artist;
+  final void Function(String albumId) onTap;
+
+  const _ArtistPage({required this.artist, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageTemplate(
+      title: artist.name,
+      coverArt: artist.coverArt,
+      slivers: [
+        SliverGrid(
+          delegate: SliverChildBuilderDelegate((context, i) {
+            final album = artist.albums[i];
+            return GestureDetector(
+              onTap: () => onTap(album.id),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 120,
+                    child: AlbumArtWidget(coverArt: album.coverArt, size: 120),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    album.name,
+                    style: AppTextStyles.listTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            );
+          }, childCount: artist.albums.length),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.75,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageTemplate extends ConsumerStatefulWidget {
   final String title;
   final String? coverArt;
   final List<Widget> slivers;
 
-  const _PageWidgetNew({
+  const _PageTemplate({
     required this.title,
-    required this.coverArt,
+    this.coverArt,
     required this.slivers,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PageTemplate> createState() => _PageWidgetNewState();
+}
+
+class _PageWidgetNewState extends ConsumerState<_PageTemplate> {
+  static const double _topBarHeight = 56;
+
+  final _scrollController = ScrollController();
+  final _titleKey = GlobalKey();
+  double _topBarTitleOpacity = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateTopBarTitle);
+    // Big title's layout isn't known until after first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateTopBarTitle());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateTopBarTitle);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _updateTopBarTitle() {
+    final box = _titleKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+
     final topInset = MediaQuery.of(context).viewPadding.top;
+    final topBarBottom = topInset + _topBarHeight;
+    final titleBottomY = box.localToGlobal(Offset.zero).dy + box.size.height;
+
+    // Fade in over the last ~32px before the title fully disappears
+    // under the bar; fully hidden -> fully visible in the bar.
+    const fadeSpan = 32.0;
+    final progress = ((topBarBottom - titleBottomY) / fadeSpan).clamp(0.0, 1.0);
+
+    if (progress != _topBarTitleOpacity) {
+      setState(() => _topBarTitleOpacity = progress);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).viewPadding.top;
+    final canPop = ref.watch(appNavigationProvider).pageStack.length > 1;
 
     return Container(
-      padding: EdgeInsets.only(top: topInset),
       color: AppColors.background,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Row(
-              children: [
-                if (ref.watch(appNavigationProvider).pageStack.length > 1)
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () =>
-                        ref.read(appNavigationProvider.notifier).popPage(),
+      child: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cover art (or nothing, if coverArt == null —
+                    // AlbumArtWidget/AlbumArtBlurred handle null internally).
+                    if (widget.coverArt != null)
+                      Stack(
+                        children: [
+                          AlbumArtBlurred(
+                            coverArt: widget.coverArt!,
+                            opacity: 0.25,
+                            fade: true,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(72),
+                            child: AlbumArtWidget(coverArt: widget.coverArt),
+                          ),
+                        ],
+                      ),
+
+                    // Big title, directly below the cover.
+                    Padding(
+                      key: _titleKey,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        widget.coverArt == null
+                            ? 8 + topInset + _topBarHeight
+                            : 8,
+                        16,
+                        16,
+                      ),
+                      child: Text(
+                        widget.title,
+                        style: AppTextStyles.pageTitleBig,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              ...widget.slivers,
+            ],
+          ),
+
+          // Pinned top bar, drawn over the scroll content.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topInset + _topBarHeight,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 100),
+              padding: EdgeInsets.only(top: topInset),
+              color: AppColors.background.withValues(
+                alpha: _topBarTitleOpacity,
+              ),
+              child: Row(
+                children: [
+                  if (canPop)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      color: AppColors.textPrimary,
+                      onPressed: () =>
+                          ref.read(appNavigationProvider.notifier).popPage(),
+                    )
+                  else
+                    const SizedBox(width: 16),
+                  Expanded(
+                    child: AnimatedOpacity(
+                      opacity: _topBarTitleOpacity,
+                      duration: const Duration(milliseconds: 100),
+                      child: Text(
+                        widget.title,
+                        style: AppTextStyles.pageTitle,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(title, style: AppTextStyles.pageTitle),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-
-          SliverToBoxAdapter(
-            child: Stack(
-              children: [
-                AlbumArtBlurred(coverArt: coverArt, opacity: 0.25, fade: true),
-                Padding(
-                  padding: EdgeInsetsGeometry.all(64),
-                  child: AlbumArtWidget(coverArt: coverArt),
-                ),
-              ],
-            ),
-          ),
-
-          ...slivers,
         ],
       ),
     );

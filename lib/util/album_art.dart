@@ -143,7 +143,7 @@ class AlbumArtWidget extends ConsumerWidget {
 }
 
 class AlbumArtBlurred extends ConsumerWidget {
-  final String? coverArt;
+  final String coverArt;
   final double? opacity;
   final bool fade;
 
@@ -157,14 +157,10 @@ class AlbumArtBlurred extends ConsumerWidget {
   final _fallbackCover = Container(color: AppColors.background);
 
   Widget _getArt(BuildContext context, WidgetRef ref) {
-    if (coverArt == null) {
-      return AspectRatio(aspectRatio: 1, child: _fallbackCover);
-    }
-
     if (coverArt == "star") return _blur(_StarArt());
 
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final lowres = _lowres(ref, dpr, coverArt!, _fallbackCover);
+    final lowres = _lowres(ref, dpr, coverArt, _fallbackCover);
 
     return _blur(AspectRatio(aspectRatio: 1, child: lowres));
   }
